@@ -358,14 +358,14 @@ private fun ApplyLeaveDialog(
         text             = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 DatePickerField(
-                    label          = "From Date",
+                    label          = "From Date *",
                     value          = fromDate,
                     onDateSelected = { fromDate = it },
                     modifier       = Modifier.fillMaxWidth(),
                     minDateMillis  = tomorrow
                 )
                 DatePickerField(
-                    label          = "To Date",
+                    label          = "To Date *",
                     value          = toDate,
                     onDateSelected = { toDate = it },
                     modifier       = Modifier.fillMaxWidth(),
@@ -374,11 +374,11 @@ private fun ApplyLeaveDialog(
                 OutlinedTextField(
                     value         = reason,
                     onValueChange = { reason = it },
-                    label         = { Text("Reason") },
+                    label         = { Text("Reason *") },
                     modifier      = Modifier.fillMaxWidth(),
                     maxLines      = 3
                 )
-                Text("Leave Type:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Leave Type *", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("casual", "sick", "personal").forEach { type ->
                         FilterChip(

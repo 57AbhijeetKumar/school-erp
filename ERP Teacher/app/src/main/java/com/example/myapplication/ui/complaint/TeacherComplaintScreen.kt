@@ -400,7 +400,7 @@ private fun RaiseComplaintDialog(
                 OutlinedTextField(
                     value         = title,
                     onValueChange = { title = it },
-                    label         = { Text("Title") },
+                    label         = { Text("Title *") },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
                     shape         = RoundedCornerShape(10.dp),
@@ -414,7 +414,7 @@ private fun RaiseComplaintDialog(
                 OutlinedTextField(
                     value         = description,
                     onValueChange = { description = it },
-                    label         = { Text("Description") },
+                    label         = { Text("Description *") },
                     modifier      = Modifier.fillMaxWidth(),
                     minLines      = 3,
                     maxLines      = 5,

@@ -369,7 +369,7 @@ private fun AddHomeworkDialog(
                         value         = selectedClass?.fullName ?: "Select class",
                         onValueChange = {},
                         readOnly      = true,
-                        label         = { Text("Class") },
+                        label         = { Text("Class *") },
                         trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                         modifier      = Modifier.menuAnchor().fillMaxWidth(),
                         shape         = RoundedCornerShape(10.dp),

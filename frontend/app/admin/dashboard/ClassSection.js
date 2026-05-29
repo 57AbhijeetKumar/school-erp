@@ -387,7 +387,7 @@ export default function ClassSection({ classes, teachers }) {
                             </div>
                             <div>
                               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                                Session <span className="text-slate-400 font-normal">(optional)</span>
+                                Session <span className="text-amber-500 font-normal">(recommended)</span>
                               </label>
                               <select name="admissionSession" defaultValue={getSessionOptions()[1]} className={sel}>
                                 <option value="">— Not set —</option>
@@ -496,15 +496,15 @@ export default function ClassSection({ classes, teachers }) {
                                         <input name="name" required defaultValue={s.name} className={inp} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Roll No.</label>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Roll No. <span className="text-slate-400 font-normal">(optional)</span></label>
                                         <input name="rollNumber" defaultValue={s.rollNumber || ''} placeholder="01" className={inp} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Name</label>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Name <span className="text-slate-400 font-normal">(optional)</span></label>
                                         <input name="parentName" defaultValue={s.parentName || ''} placeholder="Father / Mother name" className={inp} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Mobile</label>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Mobile <span className="text-slate-400 font-normal">(optional)</span></label>
                                         <input name="parentMobile" defaultValue={s.parentMobile || ''} placeholder="9999999999" maxLength={10} className={inp} />
                                       </div>
                                     </div>

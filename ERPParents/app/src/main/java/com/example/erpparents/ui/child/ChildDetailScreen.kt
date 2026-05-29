@@ -987,14 +987,14 @@ private fun LeaveApplyDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 DatePickerField(
-                    label          = "From Date",
+                    label          = "From Date *",
                     value          = fromDate,
                     onDateSelected = { fromDate = it },
                     modifier       = Modifier.fillMaxWidth(),
                     minDateMillis  = tomorrow
                 )
                 DatePickerField(
-                    label          = "To Date",
+                    label          = "To Date *",
                     value          = toDate,
                     onDateSelected = { toDate = it },
                     modifier       = Modifier.fillMaxWidth(),
@@ -1002,7 +1002,7 @@ private fun LeaveApplyDialog(
                 )
                 OutlinedTextField(
                     value = reason, onValueChange = { reason = it },
-                    label = { Text("Reason") },
+                    label = { Text("Reason *") },
                     modifier = Modifier.fillMaxWidth(), maxLines = 3
                 )
                 if (error != null) Text(error, color = Color(0xFFDC2626), fontSize = 12.sp)
@@ -1165,7 +1165,7 @@ private fun RaiseComplaintDialog(
                 OutlinedTextField(
                     value         = title,
                     onValueChange = { title = it },
-                    label         = { Text("Title") },
+                    label         = { Text("Title *") },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
                     shape         = RoundedCornerShape(10.dp),
@@ -1178,7 +1178,7 @@ private fun RaiseComplaintDialog(
                 OutlinedTextField(
                     value         = description,
                     onValueChange = { description = it },
-                    label         = { Text("Description") },
+                    label         = { Text("Description *") },
                     modifier      = Modifier.fillMaxWidth(),
                     minLines      = 3,
                     maxLines      = 5,
