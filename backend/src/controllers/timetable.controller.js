@@ -11,17 +11,21 @@ const setTimetable = async (req, res) => {
       return res.status(400).json({ message: 'classId and schedule are required' });
     }
 
-    // Validate that each period's endTime is after startTime
+    // Validate times only when both are provided
     const timeRe = /^\d{2}:\d{2}$/;
     for (const day of schedule) {
       for (const period of (day.periods || [])) {
-        if (!timeRe.test(period.startTime) || !timeRe.test(period.endTime)) {
-          return res.status(400).json({ message: `Period ${period.periodNumber} on ${day.day}: time must be HH:MM` });
-        }
-        if (period.startTime >= period.endTime) {
-          return res.status(400).json({
-            message: `Period ${period.periodNumber} on ${day.day}: end time must be after start time`,
-          });
+        const hasStart = period.startTime?.trim();
+        const hasEnd   = period.endTime?.trim();
+        if (hasStart || hasEnd) {
+          if (!timeRe.test(period.startTime) || !timeRe.test(period.endTime)) {
+            return res.status(400).json({ message: `Period ${period.periodNumber} on ${day.day}: time must be HH:MM` });
+          }
+          if (period.startTime >= period.endTime) {
+            return res.status(400).json({
+              message: `Period ${period.periodNumber} on ${day.day}: end time must be after start time`,
+            });
+          }
         }
       }
     }
