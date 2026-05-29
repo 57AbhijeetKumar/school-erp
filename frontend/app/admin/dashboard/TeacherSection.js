@@ -1,0 +1,203 @@
+'use client'
+
+import { useActionState, useEffect, useState } from 'react'
+import { addTeacher, toggleTeacherStatus, removeTeacher } from '@/lib/actions/teacher'
+
+export default function TeacherSection({ teachers, subjects = [] }) {
+  const [showForm,   setShowForm]   = useState(false)
+  const [formKey,    setFormKey]    = useState(0)
+  const [deletingId, setDeletingId] = useState(null)
+  const [state, action, pending]    = useActionState(addTeacher, null)
+
+  useEffect(() => {
+    if (state?.success) {
+      setShowForm(false)
+      setFormKey(k => k + 1)
+    }
+  }, [state?.success])
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xl">👩‍🏫</span>
+          <h2 className="font-semibold text-slate-800">Teachers</h2>
+          <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
+            {teachers.length}
+          </span>
+        </div>
+        <button
+          onClick={() => { setShowForm(v => !v); setFormKey(k => k + 1) }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          {showForm ? 'Cancel' : 'Add Teacher'}
+        </button>
+      </div>
+
+      {/* Add Teacher Form */}
+      {showForm && (
+        <form key={formKey} action={action} className="px-6 py-5 bg-emerald-50 border-b border-emerald-100">
+          <p className="text-sm font-semibold text-slate-700 mb-4">New Teacher Details</p>
+
+          {state?.error && (
+            <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {state.error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="name"
+                required
+                placeholder="Ramesh Kumar"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="mobile"
+                required
+                placeholder="9999999999"
+                maxLength={10}
+                pattern="\d{10}"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Subject <span className="text-slate-400">(optional)</span></label>
+              {subjects.length > 0 ? (
+                <select
+                  name="subject"
+                  defaultValue=""
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                >
+                  <option value="">— None —</option>
+                  {subjects.map(s => (
+                    <option key={s._id} value={s.name}>{s.name}{s.code ? ` (${s.code})` : ''}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-400 bg-slate-50">
+                  No subjects yet — add them in the Subjects section
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-xs text-slate-500">
+              🔑 Default login password: <span className="font-semibold text-slate-700">123456</span>
+              &nbsp;— share this with the teacher
+            </p>
+            <button
+              type="submit"
+              disabled={pending}
+              className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 rounded-lg transition-colors"
+            >
+              {pending ? 'Adding…' : 'Add Teacher'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Teacher Table */}
+      {teachers.length === 0 ? (
+        <div className="py-12 text-center">
+          <span className="text-3xl block mb-2">👩‍🏫</span>
+          <p className="text-slate-500 text-sm">No teachers added yet</p>
+          <p className="text-slate-400 text-xs mt-1">Click &ldquo;Add Teacher&rdquo; to get started</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left">
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">#</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Mobile (Login ID)</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Subject</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {teachers.map((t, i) => (
+                <tr key={t._id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-3 text-slate-400">{i + 1}</td>
+                  <td className="px-6 py-3 font-medium text-slate-800">{t.name}</td>
+                  <td className="px-6 py-3">
+                    <span className="font-mono text-slate-700">{t.mobile}</span>
+                  </td>
+                  <td className="px-6 py-3 text-slate-600">{t.subject || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-6 py-3">
+                    {t.isActive !== false ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-500 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+                        Inactive
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Deactivate / Reactivate */}
+                      <form action={toggleTeacherStatus}>
+                        <input type="hidden" name="teacherId" value={t._id} />
+                        <button type="submit"
+                          className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                            t.isActive !== false
+                              ? 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+                              : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                          }`}>
+                          {t.isActive !== false ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                      </form>
+
+                      {/* Delete */}
+                      {deletingId === t._id ? (
+                        <div className="flex items-center gap-1">
+                          <form action={removeTeacher}>
+                            <input type="hidden" name="teacherId" value={t._id} />
+                            <button type="submit"
+                              className="px-3 py-1 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                              Confirm
+                            </button>
+                          </form>
+                          <button onClick={() => setDeletingId(null)}
+                            className="px-3 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeletingId(t._id)}
+                          className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}

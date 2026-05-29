@@ -1,0 +1,33 @@
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+*.log
+
+# ── Environment / secrets — NEVER commit ──────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+
+# ── Next.js ───────────────────────────────────────────────────────────────────
+frontend/.next/
+frontend/out/
+
+# ── Android ───────────────────────────────────────────────────────────────────
+ERP Teacher/build/
+ERP Teacher/app/build/
+ERP Teacher/local.properties
+ERP Teacher/.idea/
+ERP Teacher/.gradle/
+ERPParents/build/
+ERPParents/app/build/
+ERPParents/local.properties
+ERPParents/.idea/
+ERPParents/.gradle/
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+*.iml

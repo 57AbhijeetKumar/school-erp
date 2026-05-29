@@ -1,0 +1,10 @@
+node_modules/
+*.log
+
+# Environment files — never commit real secrets
+.env
+.env.development
+.env.production
+
+# Commit only the example template so teammates know what vars are needed
+# .env.example  ← keep this one tracked
