@@ -92,7 +92,7 @@ export default function AdminLayout({ school, user, teachers, classes, classesWi
       case 'timetable':
         return classesWithStudents.length > 0 ? <TimetableSection classes={classesWithStudents} subjects={subjects} teachers={teachers} /> : <NoClasses />
       case 'leaves':
-        return <LeaveSection />
+        return <LeaveSection teachers={teachers} />
       case 'complaints':
         return <ComplaintSection />
       case 'promotion':

@@ -63,4 +63,7 @@ router.delete('/complaints/:id', teacherProtect, deleteComplaintByTeacher);
 const { getSubjectsForTeacher } = require('../controllers/subject.controller');
 router.get('/subjects', teacherProtect, getSubjectsForTeacher);
 
+const { getTodaySubstitutions } = require('../controllers/substitution.controller');
+router.get('/substitutions/today', teacherProtect, getTodaySubstitutions);
+
 module.exports = router;

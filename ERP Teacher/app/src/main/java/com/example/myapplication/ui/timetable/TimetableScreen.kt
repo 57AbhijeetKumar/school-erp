@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.data.model.DaySchedule
+import com.example.myapplication.data.model.SubstitutionItem
 import com.example.myapplication.ui.theme.GreenPrimary
 import com.example.myapplication.ui.theme.GreenSurface
 
@@ -99,13 +100,17 @@ fun TimetableScreen(navController: NavController) {
                             // ── My Schedule tab (or only view for subject teachers) ──
                             selectedTab == 0 || !hasClassTab -> {
                                 val schedule = uiState.timetable!!.mySchedule
-                                if (schedule.isEmpty()) {
+                                if (schedule.isEmpty() && uiState.substitutions.isEmpty()) {
                                     EmptyState(
                                         "No periods assigned yet",
                                         "Your name hasn't been assigned to any periods."
                                     )
                                 } else {
-                                    ScheduleList(schedule = schedule, showClassName = true)
+                                    ScheduleList(
+                                        schedule      = schedule,
+                                        substitutions = uiState.substitutions,
+                                        showClassName = true
+                                    )
                                 }
                             }
 
@@ -128,7 +133,7 @@ fun TimetableScreen(navController: NavController) {
                                 if (ct.schedule.isEmpty()) {
                                     EmptyState("No timetable set", "Admin hasn't added periods for this class yet.")
                                 } else {
-                                    ScheduleList(schedule = ct.schedule, showClassName = false)
+                                    ScheduleList(schedule = ct.schedule, substitutions = emptyList(), showClassName = false)
                                 }
                             }
                         }
@@ -140,13 +145,79 @@ fun TimetableScreen(navController: NavController) {
 }
 
 @Composable
-private fun ScheduleList(schedule: List<DaySchedule>, showClassName: Boolean) {
+private fun ScheduleList(
+    schedule:      List<DaySchedule>,
+    substitutions: List<SubstitutionItem>,
+    showClassName: Boolean
+) {
     LazyColumn(
         contentPadding      = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Extra duty banner — shown at the very top of My Schedule
+        if (substitutions.isNotEmpty()) {
+            item {
+                ExtraDutyCard(substitutions)
+            }
+        }
         items(schedule) { daySchedule ->
             DayCard(daySchedule, showClassName)
+        }
+    }
+}
+
+@Composable
+private fun ExtraDutyCard(substitutions: List<SubstitutionItem>) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(12.dp),
+        colors    = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFFFEDD5), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    "Extra Duty Today",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 14.sp,
+                    color      = Color(0xFFEA580C)
+                )
+            }
+            substitutions.forEachIndexed { idx, sub ->
+                if (idx > 0) HorizontalDivider(color = Color(0xFFFED7AA))
+                Row(
+                    modifier          = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier         = Modifier.size(32.dp).background(Color(0xFFFFEDD5), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("${sub.periodNumber}", fontWeight = FontWeight.Bold, color = Color(0xFFEA580C), fontSize = 12.sp)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(sub.subject, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text(
+                            "${sub.className} · covering ${sub.absentTeacherName}",
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                    if (sub.startTime.isNotBlank() && sub.endTime.isNotBlank()) {
+                        Text(
+                            "${sub.startTime} – ${sub.endTime}",
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -1,4 +1,9 @@
 const TeacherLeave = require('../models/TeacherLeave');
+const Teacher      = require('../models/Teacher');
+const Timetable    = require('../models/Timetable');
+const Substitution = require('../models/Substitution');
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // POST /api/app/teacher-leave  (teacher)
 const submitTeacherLeave = async (req, res) => {
@@ -115,6 +120,63 @@ const resolveTeacherLeave = async (req, res) => {
     leave.resolvedBy    = req.user.id;
     leave.rejectionNote = action === 'reject' ? (rejectionNote || '') : '';
     await leave.save();
+
+    // Auto-detect affected timetable periods and create substitution placeholders
+    if (action === 'approve') {
+      try {
+        const teacher = await Teacher.findById(leave.teacher).select('name');
+        if (teacher) {
+          const allTimetables = await Timetable.find({ school: leave.school })
+            .populate('class', 'name section');
+
+          const substitutions = [];
+          const current = new Date(leave.fromDate);
+          current.setUTCHours(0, 0, 0, 0);
+          const to = new Date(leave.toDate);
+          to.setUTCHours(23, 59, 59, 999);
+
+          while (current <= to) {
+            const dayName = DAY_NAMES[current.getUTCDay()];
+
+            for (const tt of allTimetables) {
+              const cls = tt.class;
+              if (!cls) continue;
+              const className = cls.section ? `${cls.name} — ${cls.section}` : cls.name;
+              const daySchedule = tt.schedule.find(d => d.day === dayName);
+              if (!daySchedule) continue;
+
+              for (const period of daySchedule.periods) {
+                if (period.teacherName === teacher.name && period.subject?.trim()) {
+                  substitutions.push({
+                    school:            leave.school,
+                    leaveId:           leave._id,
+                    date:              new Date(current),
+                    dayName,
+                    classId:           cls._id,
+                    className,
+                    periodNumber:      period.periodNumber,
+                    subject:           period.subject,
+                    startTime:         period.startTime || '',
+                    endTime:           period.endTime   || '',
+                    absentTeacherId:   leave.teacher,
+                    absentTeacherName: teacher.name,
+                  });
+                }
+              }
+            }
+            current.setUTCDate(current.getUTCDate() + 1);
+          }
+
+          if (substitutions.length > 0) {
+            await Substitution.insertMany(substitutions);
+          }
+        }
+      } catch (subErr) {
+        // Non-blocking: timetable lookup failure must never roll back the leave approval
+        console.error('[Substitution detection]', subErr.message);
+      }
+    }
+
     res.json({ message: `Leave ${leave.status}` });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -127,6 +189,7 @@ const deleteTeacherLeave = async (req, res) => {
     const leave = await TeacherLeave.findOne({ _id: req.params.id, school: req.user.school });
     if (!leave) return res.status(404).json({ message: 'Leave request not found' });
     await leave.deleteOne();
+    await Substitution.deleteMany({ leaveId: leave._id });
     res.json({ message: 'Leave request deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });

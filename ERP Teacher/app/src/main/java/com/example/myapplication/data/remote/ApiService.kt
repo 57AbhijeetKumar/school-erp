@@ -107,4 +107,8 @@ interface ApiService {
     // ── Subjects ──────────────────────────────────────────────────────────────
     @GET("api/app/subjects")
     suspend fun getSubjects(@Header("Authorization") bearerToken: String): Response<List<SubjectItem>>
+
+    // ── Substitutions ─────────────────────────────────────────────────────────
+    @GET("api/app/substitutions/today")
+    suspend fun getTodaySubstitutions(@Header("Authorization") bearerToken: String): Response<List<SubstitutionItem>>
 }

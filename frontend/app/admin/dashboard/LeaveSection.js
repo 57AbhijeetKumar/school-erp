@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import {
   fetchStudentLeaves, resolveStudentLeave, deleteStudentLeave,
   fetchTeacherLeaves, resolveTeacherLeave, deleteTeacherLeave,
+  fetchSubstitutionsForLeave, assignSubstitute,
 } from '@/lib/actions/adminLeave'
 
 const STATUS_COLORS = {
@@ -20,12 +21,154 @@ function StatusBadge({ status }) {
   )
 }
 
-function LeaveCard({ leave, onResolve, onDelete, isPending, nameField = 'student' }) {
-  const [rejectMode,  setRejectMode]  = useState(false)
-  const [note,        setNote]        = useState('')
-  const [confirmDel,  setConfirmDel]  = useState(false)
-  const [deleting,    setDeleting]    = useState(false)
-  const [deleteErr,   setDeleteErr]   = useState('')
+function groupByDate(subs) {
+  const grouped = {}
+  for (const sub of subs) {
+    const key = new Date(sub.date).toLocaleDateString('en-IN', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    })
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(sub)
+  }
+  return grouped
+}
+
+function SubstitutionPanel({ leave, teachers }) {
+  const [open,       setOpen]       = useState(false)
+  const [subs,       setSubs]       = useState(null)   // null = not yet loaded
+  const [loading,    setLoading]    = useState(false)
+  const [selections, setSelections] = useState({})     // subId → teacherId
+  const [saving,     setSaving]     = useState({})     // subId → bool
+  const [errors,     setErrors]     = useState({})
+
+  async function load() {
+    setLoading(true)
+    const data = await fetchSubstitutionsForLeave(leave._id)
+    setSubs(Array.isArray(data) ? data : [])
+    setLoading(false)
+  }
+
+  function toggle() {
+    if (!open && subs === null) load()
+    setOpen(o => !o)
+  }
+
+  async function handleAssign(sub) {
+    const teacherId = selections[sub._id]
+    if (!teacherId) return
+    const teacher = teachers.find(t => t._id === teacherId)
+    if (!teacher) return
+    setSaving(s => ({ ...s, [sub._id]: true }))
+    setErrors(e => ({ ...e, [sub._id]: '' }))
+    const result = await assignSubstitute(sub._id, teacherId, teacher.name)
+    if (result?.error) {
+      setErrors(e => ({ ...e, [sub._id]: result.error }))
+    } else {
+      setSubs(prev => prev.map(s =>
+        s._id === sub._id
+          ? { ...s, status: 'assigned', substituteTeacherName: teacher.name }
+          : s
+      ))
+    }
+    setSaving(s => ({ ...s, [sub._id]: false }))
+  }
+
+  const unassignedCount = subs ? subs.filter(s => s.status === 'unassigned').length : null
+  const grouped = subs ? groupByDate(subs) : {}
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-100">
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+      >
+        <span className="text-[10px]">{open ? '▲' : '▼'}</span>
+        <span>Substitutions</span>
+        {unassignedCount !== null && unassignedCount > 0 && (
+          <span className="ml-1 bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-semibold">
+            {unassignedCount} unassigned
+          </span>
+        )}
+        {unassignedCount === 0 && subs !== null && (
+          <span className="ml-1 bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5">all assigned</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="mt-2">
+          {loading && <p className="text-xs text-slate-400 py-1">Loading substitutions…</p>}
+
+          {!loading && subs !== null && subs.length === 0 && (
+            <p className="text-xs text-slate-400 py-1">
+              No timetable periods are affected — teacher has no assigned periods on those days.
+            </p>
+          )}
+
+          {!loading && subs !== null && subs.length > 0 && (
+            <div className="space-y-3 mt-2">
+              {Object.entries(grouped).map(([dateLabel, daySubs]) => (
+                <div key={dateLabel}>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{dateLabel}</p>
+                  <div className="space-y-1.5">
+                    {daySubs.map(sub => (
+                      <div key={sub._id} className="bg-slate-50 rounded-lg px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="min-w-0">
+                            <span className="font-medium text-slate-700">P{sub.periodNumber}: {sub.subject}</span>
+                            <span className="text-slate-400 ml-2">{sub.className}</span>
+                            {sub.startTime && (
+                              <span className="text-slate-400 ml-2">{sub.startTime}–{sub.endTime}</span>
+                            )}
+                          </div>
+
+                          {sub.status === 'assigned' ? (
+                            <span className="text-emerald-600 font-medium shrink-0">
+                              ✓ {sub.substituteTeacherName}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                              <select
+                                value={selections[sub._id] || ''}
+                                onChange={e => setSelections(s => ({ ...s, [sub._id]: e.target.value }))}
+                                className="border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
+                              >
+                                <option value="">Select teacher…</option>
+                                {teachers.map(t => (
+                                  <option key={t._id} value={t._id}>{t.name}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleAssign(sub)}
+                                disabled={!selections[sub._id] || saving[sub._id]}
+                                className="px-2.5 py-1 text-xs font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                              >
+                                {saving[sub._id] ? '…' : 'Assign'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {errors[sub._id] && (
+                          <p className="text-red-500 mt-1">{errors[sub._id]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LeaveCard({ leave, onResolve, onDelete, isPending, nameField = 'student', teachers = null }) {
+  const [rejectMode, setRejectMode] = useState(false)
+  const [note,       setNote]       = useState('')
+  const [confirmDel, setConfirmDel] = useState(false)
+  const [deleting,   setDeleting]   = useState(false)
+  const [deleteErr,  setDeleteErr]  = useState('')
   const name = leave[nameField]?.name || leave[nameField] || '—'
 
   async function handleDelete() {
@@ -120,18 +263,23 @@ function LeaveCard({ leave, onResolve, onDelete, isPending, nameField = 'student
           )}
         </div>
       </div>
+
+      {/* Substitution panel — only for approved teacher leaves */}
+      {teachers && leave.status === 'approved' && (
+        <SubstitutionPanel leave={leave} teachers={teachers} />
+      )}
     </div>
   )
 }
 
-export default function LeaveSection() {
-  const [tab,            setTab]       = useState('students')
-  const [statusFilter,   setStatus]    = useState('')
-  const [studentPage,    setStudentPage] = useState(1)
-  const [teacherPage,    setTeacherPage] = useState(1)
-  const [studentResult,  setStudentResult] = useState({ data: [], total: 0, pages: 1 })
-  const [teacherResult,  setTeacherResult] = useState({ data: [], total: 0, pages: 1 })
-  const [isPending,      startTransition] = useTransition()
+export default function LeaveSection({ teachers = [] }) {
+  const [tab,            setTab]            = useState('students')
+  const [statusFilter,   setStatus]         = useState('')
+  const [studentPage,    setStudentPage]    = useState(1)
+  const [teacherPage,    setTeacherPage]    = useState(1)
+  const [studentResult,  setStudentResult]  = useState({ data: [], total: 0, pages: 1 })
+  const [teacherResult,  setTeacherResult]  = useState({ data: [], total: 0, pages: 1 })
+  const [isPending,      startTransition]   = useTransition()
 
   useEffect(() => {
     fetchStudentLeaves(statusFilter || undefined, undefined, studentPage).then(setStudentResult)
@@ -171,7 +319,7 @@ export default function LeaveSection() {
   const teacherLeaves = teacherResult.data
   const leaves  = tab === 'students' ? studentLeaves : teacherLeaves
   const result  = tab === 'students' ? studentResult : teacherResult
-  const page    = tab === 'students' ? studentPage  : teacherPage
+  const page    = tab === 'students' ? studentPage   : teacherPage
   const setPage = tab === 'students' ? setStudentPage : setTeacherPage
 
   return (
@@ -236,6 +384,7 @@ export default function LeaveSection() {
               onResolve={tab === 'students' ? handleStudentResolve : handleTeacherResolve}
               onDelete={tab === 'students' ? handleStudentDelete : handleTeacherDelete}
               isPending={isPending}
+              teachers={tab === 'teachers' ? teachers : null}
             />
           ))}
         </div>

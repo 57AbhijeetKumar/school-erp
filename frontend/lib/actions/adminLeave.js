@@ -89,3 +89,28 @@ export async function resolveTeacherLeave(leaveId, action, rejectionNote = '') {
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
+
+export async function fetchSubstitutionsForLeave(leaveId) {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await fetch(`${API}/api/substitutions?leaveId=${leaveId}`, {
+      headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+    })
+    return res.ok ? res.json() : []
+  } catch { return [] }
+}
+
+export async function assignSubstitute(subId, substituteTeacherId, substituteTeacherName) {
+  const token = await getToken()
+  try {
+    const res = await fetch(`${API}/api/substitutions/${subId}`, {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ substituteTeacherId, substituteTeacherName }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { error: data.message }
+    return { success: true, substitution: data.substitution }
+  } catch { return { error: 'Network error' } }
+}

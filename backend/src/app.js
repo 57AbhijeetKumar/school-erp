@@ -104,6 +104,7 @@ const complaintRoutes           = require('./routes/complaint.routes');
 const subjectRoutes             = require('./routes/subject.routes');
 const superadminAnalyticsRoutes = require('./routes/superadminAnalytics.routes');
 const reportRoutes              = require('./routes/report.routes');
+const substitutionRoutes        = require('./routes/substitution.routes');
 
 app.get('/', (_req, res) => {
   res.json({ message: 'School ERP API is running', env: process.env.NODE_ENV });
@@ -133,6 +134,7 @@ app.use('/api/complaints',        complaintRoutes);
 app.use('/api/subjects',          subjectRoutes);
 app.use('/api/superadmin/analytics', superadminAnalyticsRoutes);
 app.use('/api/reports',              reportRoutes);
+app.use('/api/substitutions',        substitutionRoutes);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars

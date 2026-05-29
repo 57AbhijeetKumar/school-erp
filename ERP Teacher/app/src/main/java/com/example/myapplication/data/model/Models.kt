@@ -117,6 +117,22 @@ data class TimetableResponse(
     val mySchedule:     List<DaySchedule> = emptyList()
 )
 
+// ── Substitution ──────────────────────────────────────────────────────────────
+
+data class SubstitutionItem(
+    @SerializedName("_id") val id: String,
+    val date:                  String,
+    val dayName:               String,
+    val className:             String,
+    val periodNumber:          Int,
+    val subject:               String,
+    val startTime:             String,
+    val endTime:               String,
+    val absentTeacherName:     String,
+    val substituteTeacherName: String,
+    val status:                String   // "unassigned" | "assigned"
+)
+
 // ── Teacher Leave ─────────────────────────────────────────────────────────────
 
 data class TeacherLeaveItem(
