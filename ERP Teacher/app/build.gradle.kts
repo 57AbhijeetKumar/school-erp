@@ -32,8 +32,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Replace with your deployed API URL before publishing to Play Store
-            buildConfigField("String", "BASE_URL", "\"https://api.yourdomain.com/\"")
+            buildConfigField("String", "BASE_URL", "\"https://school-erp-backend-cxd1.onrender.com/\"")
         }
     }
     compileOptions {
