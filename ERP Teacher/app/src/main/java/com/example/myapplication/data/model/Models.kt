@@ -102,16 +102,19 @@ data class PeriodItem(
     val teacherName:  String,
     val startTime:    String,
     val endTime:      String,
-    val className:    String? = null   // present in personal schedule only
+    val className:    String? = null
 )
 
 data class DaySchedule(val day: String, val periods: List<PeriodItem>)
 
-data class TimetableResponse(
-    @SerializedName("_id") val id: String? = null,
-    val type:      String = "class",   // "class" or "personal"
-    val className: String? = null,     // set for class teachers
+data class ClassTimetable(
+    val className: String,
     val schedule:  List<DaySchedule>
+)
+
+data class TimetableResponse(
+    val classTimetable: ClassTimetable? = null,   // non-null only if class teacher
+    val mySchedule:     List<DaySchedule> = emptyList()
 )
 
 // ── Teacher Leave ─────────────────────────────────────────────────────────────

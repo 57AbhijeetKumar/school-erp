@@ -20,7 +20,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.data.model.DaySchedule
-import com.example.myapplication.data.model.PeriodItem
 import com.example.myapplication.ui.theme.GreenPrimary
 import com.example.myapplication.ui.theme.GreenSurface
 
@@ -30,12 +29,14 @@ fun TimetableScreen(navController: NavController) {
     val viewModel: TimetableViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val title = if (uiState.timetable?.type == "personal") "My Teaching Schedule" else "Timetable"
+    // 0 = My Schedule, 1 = Class Timetable
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val hasClassTab = uiState.timetable?.classTimetable != null
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { Text("Timetable", fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -52,7 +53,10 @@ fun TimetableScreen(navController: NavController) {
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = GreenPrimary)
+                uiState.isLoading -> CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = GreenPrimary
+                )
 
                 uiState.error != null -> Column(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -60,55 +64,72 @@ fun TimetableScreen(navController: NavController) {
                 ) {
                     Text(uiState.error!!, color = Color(0xFFDC2626), fontSize = 14.sp)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.load() }, colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)) {
-                        Text("Retry")
-                    }
+                    Button(
+                        onClick = { viewModel.load() },
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    ) { Text("Retry") }
                 }
 
-                uiState.timetable == null -> Column(
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("📅", fontSize = 48.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("No timetable set yet", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Ask admin to configure the school timetable.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                }
-
-                uiState.timetable!!.schedule.isEmpty() -> Column(
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("📅", fontSize = 48.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("No periods assigned yet", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Your name hasn't been assigned to any periods.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                }
+                uiState.timetable == null -> EmptyState("No timetable set yet", "Ask admin to configure the school timetable.")
 
                 else -> {
-                    val isPersonal = uiState.timetable!!.type == "personal"
                     Column(modifier = Modifier.fillMaxSize()) {
-                        if (!isPersonal && !uiState.timetable!!.className.isNullOrBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(GreenSurface)
-                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+
+                        // Tabs — only show if this teacher is also a class teacher
+                        if (hasClassTab) {
+                            TabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor   = GreenPrimary,
+                                contentColor     = Color.White
                             ) {
-                                Text(
-                                    "Class: ${uiState.timetable!!.className}",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color      = GreenPrimary,
-                                    fontSize   = 14.sp
+                                Tab(
+                                    selected = selectedTab == 0,
+                                    onClick  = { selectedTab = 0 },
+                                    text     = { Text("My Schedule", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                                )
+                                Tab(
+                                    selected = selectedTab == 1,
+                                    onClick  = { selectedTab = 1 },
+                                    text     = { Text("Class Timetable", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                                 )
                             }
                         }
-                        LazyColumn(
-                            contentPadding      = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(uiState.timetable!!.schedule) { daySchedule ->
-                                DayCard(daySchedule, isPersonal)
+
+                        when {
+                            // ── My Schedule tab (or only view for subject teachers) ──
+                            selectedTab == 0 || !hasClassTab -> {
+                                val schedule = uiState.timetable!!.mySchedule
+                                if (schedule.isEmpty()) {
+                                    EmptyState(
+                                        "No periods assigned yet",
+                                        "Your name hasn't been assigned to any periods."
+                                    )
+                                } else {
+                                    ScheduleList(schedule = schedule, showClassName = true)
+                                }
+                            }
+
+                            // ── Class Timetable tab ──
+                            else -> {
+                                val ct = uiState.timetable!!.classTimetable!!
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(GreenSurface)
+                                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        "Class: ${ct.className}",
+                                        fontWeight = FontWeight.SemiBold,
+                                        color      = GreenPrimary,
+                                        fontSize   = 14.sp
+                                    )
+                                }
+                                if (ct.schedule.isEmpty()) {
+                                    EmptyState("No timetable set", "Admin hasn't added periods for this class yet.")
+                                } else {
+                                    ScheduleList(schedule = ct.schedule, showClassName = false)
+                                }
                             }
                         }
                     }
@@ -119,7 +140,34 @@ fun TimetableScreen(navController: NavController) {
 }
 
 @Composable
-private fun DayCard(daySchedule: DaySchedule, isPersonal: Boolean = false) {
+private fun ScheduleList(schedule: List<DaySchedule>, showClassName: Boolean) {
+    LazyColumn(
+        contentPadding      = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(schedule) { daySchedule ->
+            DayCard(daySchedule, showClassName)
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(title: String, subtitle: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            modifier            = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("📅", fontSize = 48.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun DayCard(daySchedule: DaySchedule, showClassName: Boolean) {
     val activePeriods = daySchedule.periods.filter { it.subject.isNotBlank() }
 
     Card(
@@ -149,7 +197,7 @@ private fun DayCard(daySchedule: DaySchedule, isPersonal: Boolean = false) {
                 activePeriods.forEachIndexed { idx, period ->
                     if (idx > 0) HorizontalDivider(color = Color(0xFFF1F5F9))
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        modifier          = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -161,8 +209,7 @@ private fun DayCard(daySchedule: DaySchedule, isPersonal: Boolean = false) {
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(period.subject, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            // Personal schedule: show class name; class timetable: show teacher name
-                            val subtitle = if (isPersonal) period.className else period.teacherName
+                            val subtitle = if (showClassName) period.className else period.teacherName
                             if (!subtitle.isNullOrBlank()) {
                                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             }

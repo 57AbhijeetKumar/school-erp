@@ -53,30 +53,30 @@ const getTimetable = async (req, res) => {
 };
 
 // GET /api/app/timetable  (teacher)
-// Class teacher → returns their class full timetable (type: "class")
-// Subject teacher → returns periods across all classes where their name appears (type: "personal")
+// Always returns both:
+//   classTimetable — full class schedule if this teacher is the class teacher (null otherwise)
+//   mySchedule     — only the periods across all classes where this teacher's name appears
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const getTimetableForTeacher = async (req, res) => {
   try {
-    const cls = await Class.findOne({ classTeacher: req.teacher.id, school: req.teacher.school })
-      .select('name section');
-
-    if (cls) {
-      const timetable = await Timetable.findOne({ school: req.teacher.school, class: cls._id });
-      const className = cls.section ? `${cls.name} — ${cls.section}` : cls.name;
-      return res.json({
-        type:      'class',
-        _id:       timetable?._id ?? null,
-        className,
-        schedule:  timetable?.schedule ?? [],
-      });
-    }
-
-    // Subject teacher: scan all school timetables for periods assigned to this teacher
-    const teacher      = await Teacher.findById(req.teacher.id).select('name');
+    const teacher = await Teacher.findById(req.teacher.id).select('name');
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
 
+    // ── 1. Class timetable (only if this teacher is assigned as class teacher) ──
+    const myClass = await Class.findOne({ classTeacher: req.teacher.id, school: req.teacher.school })
+      .select('name section');
+
+    let classTimetable = null;
+    if (myClass) {
+      const tt = await Timetable.findOne({ school: req.teacher.school, class: myClass._id });
+      classTimetable = {
+        className: myClass.section ? `${myClass.name} — ${myClass.section}` : myClass.name,
+        schedule:  tt?.schedule ?? [],
+      };
+    }
+
+    // ── 2. Personal schedule — periods assigned to this teacher across all classes ──
     const allTimetables = await Timetable.find({ school: req.teacher.school })
       .populate('class', 'name section');
 
@@ -102,11 +102,11 @@ const getTimetableForTeacher = async (req, res) => {
       }
     }
 
-    const schedule = Object.entries(dayMap)
+    const mySchedule = Object.entries(dayMap)
       .map(([day, periods]) => ({ day, periods: periods.sort((a, b) => a.periodNumber - b.periodNumber) }))
       .sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day));
 
-    res.json({ type: 'personal', schedule });
+    res.json({ classTimetable, mySchedule });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
