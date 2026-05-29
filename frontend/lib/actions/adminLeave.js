@@ -101,6 +101,20 @@ export async function fetchSubstitutionsForLeave(leaveId) {
   } catch { return [] }
 }
 
+export async function generateSubstitutions(leaveId) {
+  const token = await getToken()
+  try {
+    const res = await fetch(`${API}/api/substitutions/generate`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ leaveId }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { error: data.message }
+    return { success: true, substitutions: data.substitutions }
+  } catch { return { error: 'Network error' } }
+}
+
 export async function assignSubstitute(subId, substituteTeacherId, substituteTeacherName) {
   const token = await getToken()
   try {

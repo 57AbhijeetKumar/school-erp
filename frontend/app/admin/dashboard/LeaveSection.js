@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import {
   fetchStudentLeaves, resolveStudentLeave, deleteStudentLeave,
   fetchTeacherLeaves, resolveTeacherLeave, deleteTeacherLeave,
-  fetchSubstitutionsForLeave, assignSubstitute,
+  fetchSubstitutionsForLeave, assignSubstitute, generateSubstitutions,
 } from '@/lib/actions/adminLeave'
 
 const STATUS_COLORS = {
@@ -34,18 +34,32 @@ function groupByDate(subs) {
 }
 
 function SubstitutionPanel({ leave, teachers }) {
-  const [open,       setOpen]       = useState(false)
-  const [subs,       setSubs]       = useState(null)   // null = not yet loaded
-  const [loading,    setLoading]    = useState(false)
-  const [selections, setSelections] = useState({})     // subId → teacherId
-  const [saving,     setSaving]     = useState({})     // subId → bool
-  const [errors,     setErrors]     = useState({})
+  const [open,        setOpen]       = useState(false)
+  const [subs,        setSubs]       = useState(null)   // null = not yet loaded
+  const [loading,     setLoading]    = useState(false)
+  const [generating,  setGenerating] = useState(false)
+  const [genError,    setGenError]   = useState('')
+  const [selections,  setSelections] = useState({})     // subId → teacherId
+  const [saving,      setSaving]     = useState({})     // subId → bool
+  const [errors,      setErrors]     = useState({})
 
   async function load() {
     setLoading(true)
     const data = await fetchSubstitutionsForLeave(leave._id)
     setSubs(Array.isArray(data) ? data : [])
     setLoading(false)
+  }
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setGenError('')
+    const result = await generateSubstitutions(leave._id)
+    if (result?.error) {
+      setGenError(result.error)
+    } else {
+      setSubs(Array.isArray(result.substitutions) ? result.substitutions : [])
+    }
+    setGenerating(false)
   }
 
   function toggle() {
@@ -99,9 +113,19 @@ function SubstitutionPanel({ leave, teachers }) {
           {loading && <p className="text-xs text-slate-400 py-1">Loading substitutions…</p>}
 
           {!loading && subs !== null && subs.length === 0 && (
-            <p className="text-xs text-slate-400 py-1">
-              No timetable periods are affected — teacher has no assigned periods on those days.
-            </p>
+            <div className="py-1">
+              <p className="text-xs text-slate-400">
+                No periods found — either the teacher has no periods on those days, or the leave was approved before this feature was deployed.
+              </p>
+              {genError && <p className="text-xs text-red-500 mt-1">{genError}</p>}
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="mt-2 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {generating ? 'Generating…' : 'Re-generate Substitutions'}
+              </button>
+            </div>
           )}
 
           {!loading && subs !== null && subs.length > 0 && (
