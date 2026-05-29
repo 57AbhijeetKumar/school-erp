@@ -59,7 +59,11 @@ export default function TimetableSection({ classes, subjects = [], teachers = []
     startTransition(async () => {
       const fd = new FormData()
       fd.set('classId',  selectedClass)
-      fd.set('schedule', JSON.stringify(schedule))
+      const filteredSchedule = schedule.map(dayObj => ({
+        ...dayObj,
+        periods: dayObj.periods.filter(p => p.subject?.trim()),
+      }))
+      fd.set('schedule', JSON.stringify(filteredSchedule))
       const result = await saveTimetable(null, fd)
       if (result?.error) setError(result.error)
       else setSaved(true)

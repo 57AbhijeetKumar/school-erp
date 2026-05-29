@@ -24,7 +24,8 @@ android {
         debug {
             // Emulator → 10.0.2.2 maps to PC localhost
             // Physical device → change to your PC's LAN IP, e.g. "http://192.168.1.3:8000/"
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.4:8000/\"")
+            buildConfigField("String", "BASE_URL", "\"https://school-erp-backend-cxd1.onrender.com/\"")
+//            buildConfigField("String", "BASE_URL", "\"http://192.168.1.4:8000/\"")
         }
         release {
             isMinifyEnabled = false

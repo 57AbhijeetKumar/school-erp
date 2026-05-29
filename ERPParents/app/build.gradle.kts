@@ -22,7 +22,8 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.4:8000/\"")
+//            buildConfigField("String", "BASE_URL", "\"http://192.168.1.4:8000/\"")
+            buildConfigField("String", "BASE_URL", "\"https://school-erp-backend-cxd1.onrender.com/\"")
         }
         release {
             isMinifyEnabled = false
@@ -30,7 +31,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "BASE_URL", "\"https://api.yourdomain.com/\"")
+            buildConfigField("String", "BASE_URL", "\"https://school-erp-backend-cxd1.onrender.com/\"")
         }
     }
     compileOptions {
