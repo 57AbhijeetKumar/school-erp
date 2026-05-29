@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 
 const API = process.env.BACKEND_URL
 
@@ -36,7 +35,6 @@ export async function createNotice(_prevState, formData) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true, ts: Date.now() }
   } catch { return { error: 'Network error' } }
 }
@@ -51,7 +49,6 @@ export async function updateNotice(noticeId, data) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
@@ -65,7 +62,6 @@ export async function deleteNotice(noticeId) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }

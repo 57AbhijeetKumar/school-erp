@@ -26,14 +26,16 @@ const corsOptions = isProd
   : { origin: true, credentials: true };   // open in dev
 
 // ── Rate limiter ──────────────────────────────────────────────────────────────
-// Only enforced in production. 100 requests per 15 minutes per IP.
+// General API: 500 req / 15 min per IP.
+// The admin dashboard fires 5-6 parallel requests per page load, and Vercel's
+// server-side fetches all originate from a single IP, so 100 was too tight.
 const apiLimiter = rateLimit({
   windowMs:        15 * 60 * 1000,
-  max:             isProd ? 100 : 10_000,  // effectively off in dev
+  max:             isProd ? 500 : 10_000,
   standardHeaders: true,
   legacyHeaders:   false,
   message:         { message: 'Too many requests, please try again later.' },
-  skip:            () => !isProd,          // belt-and-suspenders skip in dev
+  skip:            () => !isProd,
 });
 
 // Auth endpoints get a stricter limiter (prevent brute-force)

@@ -10,6 +10,8 @@ import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.HomeworkItem
 import com.example.myapplication.data.model.SubjectItem
 import com.example.myapplication.data.remote.RetrofitClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,9 +48,12 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val hw           = RetrofitClient.api.getHomework("Bearer $token")
-                val classResp    = RetrofitClient.api.getSchoolClasses("Bearer $token")
-                val subjectResp  = RetrofitClient.api.getSubjects("Bearer $token")
+                val (hw, classResp, subjectResp) = coroutineScope {
+                    val hwD      = async { RetrofitClient.api.getHomework("Bearer $token") }
+                    val classD   = async { RetrofitClient.api.getSchoolClasses("Bearer $token") }
+                    val subjectD = async { RetrofitClient.api.getSubjects("Bearer $token") }
+                    Triple(hwD.await(), classD.await(), subjectD.await())
+                }
                 _uiState.value = HomeworkUiState(
                     isLoading    = false,
                     homeworkList = if (hw.isSuccessful) hw.body() ?: emptyList() else emptyList(),

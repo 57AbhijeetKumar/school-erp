@@ -9,6 +9,8 @@ import com.example.myapplication.data.model.StudentLeaveItem
 import com.example.myapplication.data.model.SubmitLeaveRequest
 import com.example.myapplication.data.model.TeacherLeaveItem
 import com.example.myapplication.data.remote.RetrofitClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,8 +41,11 @@ class TeacherLeaveViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val myResp        = RetrofitClient.api.getMyLeaves("Bearer $token")
-                val myClassResp   = RetrofitClient.api.getMyClass("Bearer $token")
+                val (myResp, myClassResp) = coroutineScope {
+                    val myLeavesD = async { RetrofitClient.api.getMyLeaves("Bearer $token") }
+                    val myClassD  = async { RetrofitClient.api.getMyClass("Bearer $token") }
+                    Pair(myLeavesD.await(), myClassD.await())
+                }
                 val isClassTeacher = myClassResp.isSuccessful && myClassResp.body()?.isClassTeacher == true
 
                 val studentLeaves = if (isClassTeacher) {

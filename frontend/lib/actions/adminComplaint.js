@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 
 const API = process.env.BACKEND_URL
 
@@ -35,7 +34,6 @@ export async function acknowledgeComplaint(id) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
@@ -50,7 +48,6 @@ export async function resolveComplaint(id, resolvedNote) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
@@ -64,7 +61,6 @@ export async function deleteComplaint(id) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }

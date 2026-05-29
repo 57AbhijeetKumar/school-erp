@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 
 const API = process.env.BACKEND_URL
 
@@ -46,7 +45,6 @@ export async function createExam(data) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to create exam' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
@@ -61,7 +59,6 @@ export async function publishExam(examId) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to publish' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
@@ -76,7 +73,6 @@ export async function deleteExam(examId) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to delete exam' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
@@ -92,7 +88,6 @@ export async function updateExam(examId, data) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to update exam' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
@@ -118,7 +113,6 @@ export async function unpublishExam(examId) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to unpublish' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
@@ -134,7 +128,6 @@ export async function adminEnterMarks(examId, results) {
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message || 'Failed to save marks' }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Cannot connect to server' } }
 }
