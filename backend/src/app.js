@@ -49,6 +49,10 @@ const authLimiter = rateLimit({
 // ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
 
+// Render (and most PaaS) terminate TLS and proxy requests via an internal load balancer.
+// Without this, req.ip is always ::1 and all users share one rate-limit bucket.
+app.set('trust proxy', 1);
+
 // Security headers (helmet) — only in production to avoid dev friction
 if (isProd) app.use(helmet());
 
@@ -106,8 +110,9 @@ app.get('/', (_req, res) => {
 });
 
 // Auth routes get the stricter rate limiter
-app.use('/api/auth',   authLimiter, authRoutes);
-app.use('/api/parent', authLimiter, parentAppRoutes);  // parent login is here too
+app.use('/api/auth',          authLimiter, authRoutes);
+app.post('/api/parent/login', authLimiter);   // strict limit for login only
+app.use('/api/parent',        parentAppRoutes);
 
 app.use('/api/schools',  schoolRoutes);
 app.use('/api/users',    userRoutes);
