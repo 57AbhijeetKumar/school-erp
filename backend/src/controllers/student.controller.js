@@ -207,7 +207,7 @@ const promoteStudents = async (req, res) => {
 
     const result = await Student.updateMany(
       { _id: { $in: studentIds }, school: schoolId },
-      { $set: { enrolledClass: toClassId, currentSession: toSession } }
+      { $set: { enrolledClass: toClassId, currentSession: toSession }, $unset: { rollNumber: '' } }
     );
 
     const label = toClass.section ? `${toClass.name} — ${toClass.section}` : toClass.name;

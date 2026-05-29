@@ -288,6 +288,7 @@ export default function PromotionSection({ classes }) {
             <p>• Student moves to the new class immediately.</p>
             <p>• Old attendance, exam results, fees &amp; homework remain accessible under the previous class records.</p>
             <p>• Students who failed can be re-enrolled in the same grade by creating a duplicate class (e.g. Class 5 — Repeat) and promoting them there.</p>
+            <p>• Roll numbers are cleared on promotion — please assign new roll numbers in the destination class.</p>
           </div>
         </div>
       </div>
