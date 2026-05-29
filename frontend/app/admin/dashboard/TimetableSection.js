@@ -31,10 +31,25 @@ export default function TimetableSection({ classes, subjects = [], teachers = []
     })
   }, [selectedClass])
 
+  function teachersForSubject(subjectName) {
+    if (!subjectName) return teachers
+    return teachers.filter(t =>
+      t.subject && t.subject.toLowerCase() === subjectName.toLowerCase()
+    )
+  }
+
   function updateCell(dayIdx, periodIdx, field, value) {
     setSchedule(prev => {
       const next = prev.map(d => ({ ...d, periods: [...d.periods] }))
-      next[dayIdx].periods[periodIdx] = { ...next[dayIdx].periods[periodIdx], [field]: value }
+      const cell = { ...next[dayIdx].periods[periodIdx], [field]: value }
+
+      if (field === 'subject') {
+        const matched = teachersForSubject(value)
+        // auto-fill teacher when exactly one match; clear on any other change
+        cell.teacherName = matched.length === 1 ? matched[0].name : ''
+      }
+
+      next[dayIdx].periods[periodIdx] = cell
       return next
     })
   }
@@ -163,25 +178,38 @@ export default function TimetableSection({ classes, subjects = [], teachers = []
                           )}
                         </td>
                         <td className="px-3 py-1.5">
-                          {teachers.length > 0 ? (
-                            <select
-                              value={p.teacherName}
-                              onChange={e => updateCell(dayIdx, pIdx, 'teacherName', e.target.value)}
-                              className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
-                            >
-                              <option value="">— Select —</option>
-                              {teachers.map(t => (
-                                <option key={t._id} value={t.name}>{t.name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              value={p.teacherName}
-                              onChange={e => updateCell(dayIdx, pIdx, 'teacherName', e.target.value)}
-                              className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                              placeholder="Teacher"
-                            />
-                          )}
+                          {(() => {
+                            const matched = teachersForSubject(p.subject)
+                            // Auto-assigned: exactly one teacher for this subject
+                            if (p.subject && matched.length === 1) {
+                              return (
+                                <span className="inline-block px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded border border-emerald-200">
+                                  {p.teacherName}
+                                </span>
+                              )
+                            }
+                            // Filtered dropdown: multiple teachers for this subject
+                            const options = matched.length > 1 ? matched : teachers
+                            return options.length > 0 ? (
+                              <select
+                                value={p.teacherName}
+                                onChange={e => updateCell(dayIdx, pIdx, 'teacherName', e.target.value)}
+                                className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
+                              >
+                                <option value="">— Select —</option>
+                                {options.map(t => (
+                                  <option key={t._id} value={t.name}>{t.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                value={p.teacherName}
+                                onChange={e => updateCell(dayIdx, pIdx, 'teacherName', e.target.value)}
+                                className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                placeholder="Teacher"
+                              />
+                            )
+                          })()}
                         </td>
                         <td className="px-3 py-1.5">
                           <input
