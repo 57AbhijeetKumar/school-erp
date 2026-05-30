@@ -1,5 +1,6 @@
-const Homework = require('../models/Homework');
-const Class    = require('../models/Class');
+const Homework           = require('../models/Homework');
+const HomeworkSubmission = require('../models/HomeworkSubmission');
+const Class              = require('../models/Class');
 
 // GET /api/homework/class/:classId  — admin view, read-only
 const getClassHomework = async (req, res) => {
@@ -32,6 +33,7 @@ const deleteHomework = async (req, res) => {
   try {
     const hw = await Homework.findOne({ _id: req.params.id, school: req.user.school });
     if (!hw) return res.status(404).json({ message: 'Homework not found' });
+    await HomeworkSubmission.deleteMany({ homework: hw._id });
     await hw.deleteOne();
     res.json({ message: 'Homework deleted' });
   } catch (err) {
