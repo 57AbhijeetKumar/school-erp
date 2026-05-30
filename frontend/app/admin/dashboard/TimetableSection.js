@@ -37,6 +37,8 @@ export default function TimetableSection({ classes, subjects = [], teachers = []
 
   useEffect(() => {
     if (!selectedClass) return
+    // Clear immediately so switching classes never shows the previous class's data
+    setSchedule(DAYS.map(emptyDay))
     setLoading(true)
     setSaved(false)
     setError('')

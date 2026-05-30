@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 
 const API = process.env.BACKEND_URL
 
@@ -31,7 +30,6 @@ export async function clearTimetable(classId) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
@@ -54,7 +52,6 @@ export async function saveTimetable(_prevState, formData) {
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message }
-    revalidatePath('/admin/dashboard')
     return { success: true }
   } catch { return { error: 'Network error' } }
 }
