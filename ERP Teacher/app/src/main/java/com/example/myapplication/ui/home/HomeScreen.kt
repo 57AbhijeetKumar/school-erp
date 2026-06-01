@@ -83,11 +83,24 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(GreenPrimary.copy(alpha = 0.15f), MaterialTheme.colorScheme.background)))
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues),
         ) {
+            // Slim progress bar during background refresh — non-blocking
+            if (uiState.isRefreshing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color    = GreenPrimary,
+                    trackColor = GreenPrimary.copy(alpha = 0.2f)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // ── Greeting card ──────────────────────────────────────────────────
             Card(
                 modifier  = Modifier.fillMaxWidth(),
@@ -198,7 +211,8 @@ fun HomeScreen(
                     onClick  = { navController.navigate("complaints") }
                 )
             }
-        }
+            } // inner Column
+        } // outer Column
     }
 }
 

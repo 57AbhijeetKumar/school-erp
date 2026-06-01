@@ -126,17 +126,24 @@ const getSchoolClasses = async (req, res) => {
 };
 
 // GET /api/app/students  — all students in school (for complaint filing)
+// Each student includes their enrolled class so the app can group them by class.
 const getSchoolStudents = async (req, res) => {
   try {
     const students = await Student.find({ school: req.teacher.school, isDeleted: { $ne: true } })
-      .select('name rollNumber')
+      .populate('enrolledClass', 'name section')
+      .select('name rollNumber enrolledClass')
       .sort({ name: 1 });
 
-    res.json(students.map(s => ({
-      id:         s._id,
-      name:       s.name,
-      rollNumber: s.rollNumber || null,
-    })));
+    res.json(students.map(s => {
+      const cls = s.enrolledClass;
+      return {
+        id:         s._id,
+        name:       s.name,
+        rollNumber: s.rollNumber || null,
+        classId:    cls?._id    || null,
+        className:  cls ? (cls.section ? `${cls.name} — ${cls.section}` : cls.name) : null,
+      };
+    }));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -13,13 +13,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
-    val isLoading:      Boolean          = true,
-    val teacherName:    String           = "",
-    val isClassTeacher: Boolean          = false,
-    val classInfo:      ClassData?       = null,
+    val isLoading:      Boolean           = true,
+    val isRefreshing:   Boolean           = false,
+    val teacherName:    String            = "",
+    val isClassTeacher: Boolean           = false,
+    val classInfo:      ClassData?        = null,
     val students:       List<StudentData> = emptyList(),
-    val error:          String?          = null,
-    val sessionExpired: Boolean          = false
+    val error:          String?           = null,
+    val sessionExpired: Boolean           = false
 )
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
@@ -37,17 +38,23 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadMyClass() {
         val token = prefManager.getToken() ?: return
+        // First load shows full-screen spinner; subsequent refreshes keep existing content visible
+        val hasData = _uiState.value.teacherName.isNotBlank()
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = if (hasData)
+                _uiState.value.copy(isRefreshing = true, error = null)
+            else
+                _uiState.value.copy(isLoading = true, error = null)
             try {
                 val response = RetrofitClient.api.getMyClass("Bearer $token")
                 if (response.isSuccessful) {
                     val body = response.body() ?: run {
-                        _uiState.value = _uiState.value.copy(isLoading = false, error = "Empty response from server")
+                        _uiState.value = _uiState.value.copy(isLoading = false, isRefreshing = false, error = "Empty response from server")
                         return@launch
                     }
                     _uiState.value = HomeUiState(
                         isLoading      = false,
+                        isRefreshing   = false,
                         teacherName    = prefManager.getTeacherName(),
                         isClassTeacher = body.isClassTeacher,
                         classInfo      = body.classInfo,
@@ -55,16 +62,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 } else if (response.code() == 401 || response.code() == 403) {
                     prefManager.clear()
-                    _uiState.value = HomeUiState(isLoading = false, sessionExpired = true)
+                    _uiState.value = HomeUiState(isLoading = false, isRefreshing = false, sessionExpired = true)
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false,
+                        isLoading = false, isRefreshing = false,
                         error = "Failed to load class info"
                     )
                 }
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
+                    isLoading = false, isRefreshing = false,
                     error = "Cannot connect to server"
                 )
             }

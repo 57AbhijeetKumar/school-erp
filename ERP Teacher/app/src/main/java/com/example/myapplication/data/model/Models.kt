@@ -14,7 +14,15 @@ data class ClassData(val id: String, val name: String, val section: String?) {
     val fullName: String get() = if (section.isNullOrBlank()) name else "$name — $section"
 }
 
-data class StudentData(val id: String, val name: String, val rollNumber: String?, val parentName: String?, val parentMobile: String?)
+data class StudentData(
+    val id:           String,
+    val name:         String,
+    val rollNumber:   String?,
+    val parentName:   String?   = null,
+    val parentMobile: String?   = null,
+    val classId:      String?   = null,
+    val className:    String?   = null,
+)
 
 // ── Exam ──────────────────────────────────────────────────────────────────────
 

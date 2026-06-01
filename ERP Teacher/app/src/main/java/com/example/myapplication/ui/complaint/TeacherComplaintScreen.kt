@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.ComplaintItem
 import com.example.myapplication.data.model.StudentData
 import com.example.myapplication.ui.theme.GreenPrimary
@@ -118,6 +119,7 @@ fun TeacherComplaintScreen(navController: NavController) {
 
     if (showRaiseDialog) {
         RaiseComplaintDialog(
+            classes      = uiState.classes,
             students     = uiState.students,
             isSubmitting = uiState.isSubmitting,
             error        = uiState.submitError,
@@ -299,12 +301,15 @@ private val COMPLAINT_SEVERITIES = listOf("low", "medium", "high")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RaiseComplaintDialog(
+    classes:      List<ClassData>,
     students:     List<StudentData>,
     isSubmitting: Boolean,
     error:        String?,
     onDismiss:    () -> Unit,
     onSubmit:     (studentId: String, category: String, severity: String, title: String, description: String) -> Unit
 ) {
+    var selectedClass    by remember { mutableStateOf<ClassData?>(null) }
+    var classExpanded    by remember { mutableStateOf(false) }
     var selectedStudent  by remember { mutableStateOf<StudentData?>(null) }
     var studentExpanded  by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("") }
@@ -312,28 +317,44 @@ private fun RaiseComplaintDialog(
     var title            by remember { mutableStateOf("") }
     var description      by remember { mutableStateOf("") }
 
+    // Students filtered to the selected class only, sorted by roll number numerically
+    val studentsInClass = remember(selectedClass, students) {
+        if (selectedClass == null) emptyList()
+        else students.filter { it.classId == selectedClass!!.id }
+            .sortedWith(compareBy(
+                { it.rollNumber?.toIntOrNull() ?: Int.MAX_VALUE },
+                { it.name }
+            ))
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Raise Complaint", fontWeight = FontWeight.Bold) },
         text  = {
             Column(
-                modifier              = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement   = Arrangement.spacedBy(12.dp)
+                modifier            = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Student dropdown
+
+                // ── Step 1: Class picker ───────────────────────────────────────
+                Text(
+                    "Step 1 — Select Class",
+                    fontSize   = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 ExposedDropdownMenuBox(
-                    expanded         = studentExpanded,
-                    onExpandedChange = { studentExpanded = !studentExpanded }
+                    expanded         = classExpanded,
+                    onExpandedChange = { classExpanded = !classExpanded }
                 ) {
                     OutlinedTextField(
-                        value         = selectedStudent?.name ?: "",
+                        value         = selectedClass?.fullName ?: "",
                         onValueChange = {},
                         readOnly      = true,
-                        label         = { Text("Select Student") },
-                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = studentExpanded) },
-                        modifier      = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
+                        label         = { Text("Class") },
+                        placeholder   = { Text("Tap to select a class") },
+                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = classExpanded) },
+                        modifier      = Modifier.fillMaxWidth().menuAnchor(),
                         shape         = RoundedCornerShape(10.dp),
                         colors        = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = GreenPrimary,
@@ -341,89 +362,166 @@ private fun RaiseComplaintDialog(
                         )
                     )
                     ExposedDropdownMenu(
-                        expanded         = studentExpanded,
-                        onDismissRequest = { studentExpanded = false }
+                        expanded         = classExpanded,
+                        onDismissRequest = { classExpanded = false }
                     ) {
-                        students.forEach { student ->
+                        if (classes.isEmpty()) {
                             DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(student.name, fontSize = 14.sp)
-                                        student.rollNumber?.let {
-                                            Text("Roll: $it", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    selectedStudent = student
-                                    studentExpanded = false
-                                }
+                                text    = { Text("No classes available", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) },
+                                onClick = { classExpanded = false }
                             )
+                        } else {
+                            classes.forEach { cls ->
+                                DropdownMenuItem(
+                                    text = { Text(cls.fullName, fontSize = 14.sp) },
+                                    onClick = {
+                                        if (selectedClass?.id != cls.id) {
+                                            selectedClass   = cls
+                                            selectedStudent = null  // reset student on class change
+                                        }
+                                        classExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
 
-                // Category chips
-                Text("Category:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    COMPLAINT_CATEGORIES.forEach { cat ->
-                        FilterChip(
-                            selected = selectedCategory == cat,
-                            onClick  = { selectedCategory = cat },
-                            label    = { Text(cat, fontSize = 12.sp) },
-                            colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = GreenSurface,
-                                selectedLabelColor     = GreenPrimary
+                // ── Step 2: Student picker (only shown after class is chosen) ──
+                if (selectedClass != null) {
+                    Text(
+                        "Step 2 — Select Student",
+                        fontSize   = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded         = studentExpanded,
+                        onExpandedChange = { studentExpanded = !studentExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value         = selectedStudent?.let { s ->
+                                buildString {
+                                    append(s.name)
+                                    s.rollNumber?.let { append("  ·  Roll $it") }
+                                }
+                            } ?: "",
+                            onValueChange = {},
+                            readOnly      = true,
+                            label         = { Text("Student") },
+                            placeholder   = { Text("Tap to select a student") },
+                            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = studentExpanded) },
+                            modifier      = Modifier.fillMaxWidth().menuAnchor(),
+                            shape         = RoundedCornerShape(10.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GreenPrimary,
+                                focusedLabelColor  = GreenPrimary
                             )
                         )
+                        ExposedDropdownMenu(
+                            expanded         = studentExpanded,
+                            onDismissRequest = { studentExpanded = false }
+                        ) {
+                            if (studentsInClass.isEmpty()) {
+                                DropdownMenuItem(
+                                    text    = {
+                                        Text(
+                                            "No students found in this class",
+                                            fontSize = 13.sp,
+                                            color    = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    onClick = { studentExpanded = false },
+                                    enabled = false
+                                )
+                            } else {
+                                studentsInClass.forEach { student ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(student.name, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                                student.rollNumber?.let {
+                                                    Text("Roll No. $it", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedStudent = student
+                                            studentExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
-                // Severity chips
-                Text("Severity:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    COMPLAINT_SEVERITIES.forEach { sev ->
-                        val sevColor = severityBadgeColor(sev)
-                        FilterChip(
-                            selected = selectedSeverity == sev,
-                            onClick  = { selectedSeverity = sev },
-                            label    = { Text(sev.replaceFirstChar { it.uppercase() }, fontSize = 12.sp) },
-                            colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = sevColor.copy(alpha = 0.15f),
-                                selectedLabelColor     = sevColor
+                // ── Rest of form (shown once student selected) ─────────────────
+                if (selectedStudent != null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // Category chips
+                    Text("Category:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        COMPLAINT_CATEGORIES.forEach { cat ->
+                            FilterChip(
+                                selected = selectedCategory == cat,
+                                onClick  = { selectedCategory = cat },
+                                label    = { Text(formatCategory(cat), fontSize = 12.sp) },
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GreenSurface,
+                                    selectedLabelColor     = GreenPrimary
+                                )
                             )
-                        )
+                        }
                     }
+
+                    // Severity chips
+                    Text("Severity:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        COMPLAINT_SEVERITIES.forEach { sev ->
+                            val sevColor = severityBadgeColor(sev)
+                            FilterChip(
+                                selected = selectedSeverity == sev,
+                                onClick  = { selectedSeverity = sev },
+                                label    = { Text(sev.replaceFirstChar { it.uppercase() }, fontSize = 12.sp) },
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = sevColor.copy(alpha = 0.15f),
+                                    selectedLabelColor     = sevColor
+                                )
+                            )
+                        }
+                    }
+
+                    // Title field
+                    OutlinedTextField(
+                        value         = title,
+                        onValueChange = { title = it },
+                        label         = { Text("Title *") },
+                        modifier      = Modifier.fillMaxWidth(),
+                        singleLine    = true,
+                        shape         = RoundedCornerShape(10.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GreenPrimary,
+                            focusedLabelColor  = GreenPrimary
+                        )
+                    )
+
+                    // Description field
+                    OutlinedTextField(
+                        value         = description,
+                        onValueChange = { description = it },
+                        label         = { Text("Description *") },
+                        modifier      = Modifier.fillMaxWidth(),
+                        minLines      = 3,
+                        maxLines      = 5,
+                        shape         = RoundedCornerShape(10.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GreenPrimary,
+                            focusedLabelColor  = GreenPrimary
+                        )
+                    )
                 }
-
-                // Title field
-                OutlinedTextField(
-                    value         = title,
-                    onValueChange = { title = it },
-                    label         = { Text("Title *") },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(10.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GreenPrimary,
-                        focusedLabelColor  = GreenPrimary
-                    )
-                )
-
-                // Description field
-                OutlinedTextField(
-                    value         = description,
-                    onValueChange = { description = it },
-                    label         = { Text("Description *") },
-                    modifier      = Modifier.fillMaxWidth(),
-                    minLines      = 3,
-                    maxLines      = 5,
-                    shape         = RoundedCornerShape(10.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GreenPrimary,
-                        focusedLabelColor  = GreenPrimary
-                    )
-                )
 
                 if (error != null) {
                     Text(error, color = Color(0xFFDC2626), fontSize = 12.sp)

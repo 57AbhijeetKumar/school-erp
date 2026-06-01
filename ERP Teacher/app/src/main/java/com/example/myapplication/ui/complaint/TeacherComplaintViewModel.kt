@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
+import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.ComplaintItem
 import com.example.myapplication.data.model.ComplaintsResponse
 import com.example.myapplication.data.model.StudentData
@@ -15,15 +16,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class ComplaintUiState(
-    val isLoading:      Boolean              = true,
-    val myComplaints:   List<ComplaintItem>  = emptyList(),
-    val classComplaints: List<ComplaintItem> = emptyList(),
-    val students:       List<StudentData>    = emptyList(),
-    val error:          String?              = null,
-    val isSubmitting:   Boolean              = false,
-    val submitSuccess:  Boolean              = false,
-    val submitError:    String?              = null,
-    val isClassTeacher: Boolean              = false
+    val isLoading:       Boolean              = true,
+    val myComplaints:    List<ComplaintItem>  = emptyList(),
+    val classComplaints: List<ComplaintItem>  = emptyList(),
+    val classes:         List<ClassData>      = emptyList(),
+    val students:        List<StudentData>    = emptyList(),
+    val error:           String?              = null,
+    val isSubmitting:    Boolean              = false,
+    val submitSuccess:   Boolean              = false,
+    val submitError:     String?              = null,
+    val isClassTeacher:  Boolean              = false
 )
 
 class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
@@ -38,20 +40,24 @@ class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                // Load complaints, all school students (for complaint picker), and class info in parallel
                 val complaintsResp = RetrofitClient.api.getComplaints("Bearer $token")
                 val studentsResp   = RetrofitClient.api.getSchoolStudents("Bearer $token")
+                val classesResp    = RetrofitClient.api.getSchoolClasses("Bearer $token")
                 val classResp      = RetrofitClient.api.getMyClass("Bearer $token")
 
                 val complaints = if (complaintsResp.isSuccessful) complaintsResp.body()
                                  else ComplaintsResponse(emptyList(), emptyList())
                 val classBody  = if (classResp.isSuccessful) classResp.body() else null
+                val allStudents = if (studentsResp.isSuccessful) studentsResp.body() ?: emptyList() else emptyList()
+                // Derive classes from students (preserves order, no extra field needed)
+                val classes = if (classesResp.isSuccessful) classesResp.body() ?: emptyList() else emptyList()
 
                 _uiState.value = _uiState.value.copy(
                     isLoading       = false,
                     myComplaints    = complaints?.myComplaints    ?: emptyList(),
                     classComplaints = complaints?.classComplaints ?: emptyList(),
-                    students        = if (studentsResp.isSuccessful) studentsResp.body() ?: emptyList() else emptyList(),
+                    students        = allStudents,
+                    classes         = classes,
                     isClassTeacher  = classBody?.isClassTeacher   ?: false
                 )
             } catch (e: Exception) {
