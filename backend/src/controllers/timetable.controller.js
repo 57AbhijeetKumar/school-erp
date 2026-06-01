@@ -33,6 +33,64 @@ const setTimetable = async (req, res) => {
     const cls = await Class.findOne({ _id: classId, school: req.user.school });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
+    // ── Teacher conflict check ────────────────────────────────────────────────
+    // Collect every (day, periodNumber, teacherName) that has a real teacher assigned
+    const incoming = [];
+    for (const day of schedule) {
+      for (const period of (day.periods || [])) {
+        if (period.teacherName?.trim() && period.subject?.trim()) {
+          incoming.push({
+            day:          day.day,
+            periodNumber: period.periodNumber,
+            teacherName:  period.teacherName.trim(),
+          });
+        }
+      }
+    }
+
+    if (incoming.length > 0) {
+      // Load all OTHER classes' timetables and scan for same day+period+teacher
+      const otherTimetables = await Timetable.find({
+        school: req.user.school,
+        class:  { $ne: classId },
+      }).populate('class', 'name section');
+
+      const conflicts = [];
+      for (const tt of otherTimetables) {
+        if (!tt.class) continue;
+        const conflictClass = tt.class.section
+          ? `${tt.class.name} — ${tt.class.section}`
+          : tt.class.name;
+        for (const day of tt.schedule) {
+          for (const period of (day.periods || [])) {
+            if (!period.teacherName?.trim()) continue;
+            const match = incoming.find(
+              i => i.day         === day.day &&
+                   i.periodNumber === period.periodNumber &&
+                   i.teacherName  === period.teacherName.trim()
+            );
+            if (match) {
+              conflicts.push({
+                teacherName:   match.teacherName,
+                day:           match.day,
+                periodNumber:  match.periodNumber,
+                conflictClass,
+              });
+            }
+          }
+        }
+      }
+
+      if (conflicts.length > 0) {
+        const f = conflicts[0];
+        return res.status(409).json({
+          message: `${f.teacherName} is already assigned to ${f.conflictClass} on ${f.day} Period ${f.periodNumber}`,
+          conflicts,
+        });
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const timetable = await Timetable.findOneAndUpdate(
       { school: req.user.school, class: classId },
       { school: req.user.school, class: classId, schedule },
@@ -142,4 +200,15 @@ const deleteTimetable = async (req, res) => {
   }
 };
 
-module.exports = { setTimetable, getTimetable, getTimetableForTeacher, getTimetableForStudent, deleteTimetable };
+// GET /api/timetable/all  (admin — all classes, used for real-time conflict detection)
+const getAllTimetables = async (req, res) => {
+  try {
+    const timetables = await Timetable.find({ school: req.user.school })
+      .populate('class', 'name section');
+    res.json(timetables);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { setTimetable, getTimetable, getAllTimetables, getTimetableForTeacher, getTimetableForStudent, deleteTimetable };

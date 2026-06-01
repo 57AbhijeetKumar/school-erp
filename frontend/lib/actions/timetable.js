@@ -20,6 +20,17 @@ export async function fetchTimetable(classId) {
   } catch { return null }
 }
 
+export async function fetchAllTimetables() {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await fetch(`${API}/api/timetable/all`, {
+      headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+    })
+    return res.ok ? res.json() : []
+  } catch { return [] }
+}
+
 export async function clearTimetable(classId) {
   const token = await getToken()
   if (!token || !classId) return { error: 'Not authenticated' }
@@ -51,7 +62,7 @@ export async function saveTimetable(_prevState, formData) {
       body:    JSON.stringify({ classId, schedule }),
     })
     const data = await res.json()
-    if (!res.ok) return { error: data.message }
+    if (!res.ok) return { error: data.message, conflicts: data.conflicts || [] }
     return { success: true }
-  } catch { return { error: 'Network error' } }
+  } catch { return { error: 'Network error', conflicts: [] } }
 }
