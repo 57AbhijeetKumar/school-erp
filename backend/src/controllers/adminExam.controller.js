@@ -30,6 +30,7 @@ const createExam = async (req, res) => {
     if (!name || !type || !classId || !subjects?.length) {
       return res.status(400).json({ message: 'name, type, classId and subjects are required' });
     }
+    if (name.trim().length > 200) return res.status(400).json({ message: 'Exam name cannot exceed 200 characters' });
     if (!EXAM_TYPES.includes(type)) {
       return res.status(400).json({ message: `type must be one of: ${EXAM_TYPES.join(', ')}` });
     }

@@ -8,6 +8,8 @@ const createNotice = async (req, res) => {
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: 'title and content are required' });
     }
+    if (title.trim().length > 200)   return res.status(400).json({ message: 'Title cannot exceed 200 characters' });
+    if (content.trim().length > 5000) return res.status(400).json({ message: 'Content cannot exceed 5000 characters' });
     const notice = await Notice.create({
       school:         req.user.school,
       title:          title.trim(),

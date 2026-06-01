@@ -17,8 +17,10 @@ const createSubject = async (req, res) => {
   try {
     const { name, code } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Subject name is required' });
+    if (name.trim().length > 100) return res.status(400).json({ message: 'Subject name cannot exceed 100 characters' });
+    if (code?.trim().length > 20) return res.status(400).json({ message: 'Subject code cannot exceed 20 characters' });
 
-    const exists = await Subject.findOne({ school: req.user.school, name: name.trim() });
+    const exists = await Subject.findOne({ school: req.user.school, name: new RegExp(`^${name.trim()}$`, 'i') });
     if (exists) return res.status(409).json({ message: `Subject "${name.trim()}" already exists` });
 
     const subject = await Subject.create({

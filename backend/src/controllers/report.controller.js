@@ -76,6 +76,11 @@ const attendanceReport = async (req, res) => {
     if (fromDate > toDate) {
       return res.status(400).json({ message: '"from" date must be on or before "to" date' });
     }
+    const rangeMs  = toDate - fromDate;
+    const maxMs    = 366 * 24 * 60 * 60 * 1000;
+    if (rangeMs > maxMs) {
+      return res.status(400).json({ message: 'Date range cannot exceed 366 days' });
+    }
 
     const cls = await Class.findOne({ _id: classId, school: schoolId });
     if (!cls) return res.status(404).json({ message: 'Class not found' });

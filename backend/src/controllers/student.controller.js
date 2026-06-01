@@ -14,6 +14,8 @@ const addStudent = async (req, res) => {
     if (!name || !classId) {
       return res.status(400).json({ message: 'Student name and classId are required' });
     }
+    if (name.trim().length > 100) return res.status(400).json({ message: 'Student name cannot exceed 100 characters' });
+    if (parentName?.trim().length > 100) return res.status(400).json({ message: 'Parent name cannot exceed 100 characters' });
     if (dob && new Date(dob) > new Date()) {
       return res.status(400).json({ message: 'Date of birth cannot be in the future' });
     }

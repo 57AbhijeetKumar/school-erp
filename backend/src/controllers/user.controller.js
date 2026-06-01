@@ -30,8 +30,19 @@ const getById = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { name, role, isActive } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
+
+    // School admins can only update users within their own school
+    const filter = req.user.role === 'superadmin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, school: req.user.school };
+
+    // Prevent a school admin from escalating anyone to superadmin
+    if (req.user.role !== 'superadmin' && role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot assign superadmin role' });
+    }
+
+    const user = await User.findOneAndUpdate(
+      filter,
       { name, role, isActive },
       { new: true, runValidators: true }
     ).select('-password');
@@ -44,7 +55,12 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    // School admins can only delete users within their own school
+    const filter = req.user.role === 'superadmin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, school: req.user.school };
+
+    const user = await User.findOneAndDelete(filter);
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User deleted' });
   } catch (err) {

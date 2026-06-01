@@ -12,6 +12,7 @@ const submitTeacherLeave = async (req, res) => {
     if (!fromDate || !toDate || !reason?.trim()) {
       return res.status(400).json({ message: 'fromDate, toDate and reason are required' });
     }
+    if (reason.trim().length > 1000) return res.status(400).json({ message: 'Reason cannot exceed 1000 characters' });
     const from     = new Date(fromDate);
     const to       = new Date(toDate);
     const todayUTC = new Date(); todayUTC.setUTCHours(0, 0, 0, 0);

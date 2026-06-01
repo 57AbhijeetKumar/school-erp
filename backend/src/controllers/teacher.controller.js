@@ -10,6 +10,7 @@ const createTeacher = async (req, res) => {
     if (!name || !mobile) {
       return res.status(400).json({ message: 'Name and mobile number are required' });
     }
+    if (name.trim().length > 100) return res.status(400).json({ message: 'Teacher name cannot exceed 100 characters' });
 
     const exists = await Teacher.findOne({ mobile });
     if (exists) {

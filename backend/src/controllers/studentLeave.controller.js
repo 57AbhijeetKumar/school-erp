@@ -15,6 +15,7 @@ const submitStudentLeave = async (req, res) => {
     if (!fromDate || !toDate || !reason?.trim()) {
       return res.status(400).json({ message: 'fromDate, toDate and reason are required' });
     }
+    if (reason.trim().length > 1000) return res.status(400).json({ message: 'Reason cannot exceed 1000 characters' });
     const from    = new Date(fromDate);
     const to      = new Date(toDate);
     const todayUTC = new Date(); todayUTC.setUTCHours(0, 0, 0, 0);
@@ -181,6 +182,7 @@ const resolveLeaveByAdmin = async (req, res) => {
     }
     const leave = await StudentLeave.findOne({ _id: req.params.id, school: req.user.school });
     if (!leave) return res.status(404).json({ message: 'Leave request not found' });
+    if (leave.status !== 'pending') return res.status(400).json({ message: 'Already resolved' });
 
     leave.status          = action === 'approve' ? 'approved' : 'rejected';
     leave.resolvedAt      = new Date();

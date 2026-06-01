@@ -119,6 +119,17 @@ const markClassAttendance = async (req, res) => {
     const cls = await Class.findOne({ _id: req.params.classId, school: schoolId });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
+    // Validate every studentId belongs to this school to prevent cross-school injection
+    const submittedIds = records.map(r => r.studentId);
+    const validStudents = await Student.find(
+      { _id: { $in: submittedIds }, school: schoolId },
+    ).distinct('_id');
+    const validSet = new Set(validStudents.map(id => id.toString()));
+    const invalid = submittedIds.find(id => !validSet.has(id?.toString()));
+    if (invalid) {
+      return res.status(400).json({ message: 'One or more students do not belong to this school' });
+    }
+
     const attendanceDate = new Date(date + 'T00:00:00.000Z');
 
     const ops = records.map(({ studentId, status }) => ({
