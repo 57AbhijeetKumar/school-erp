@@ -66,14 +66,10 @@ const updateNotice = async (req, res) => {
   }
 };
 
-// DELETE /api/notices/:id  (admin — soft delete)
+// DELETE /api/notices/:id  (admin)
 const deleteNotice = async (req, res) => {
   try {
-    const notice = await Notice.findOneAndUpdate(
-      { _id: req.params.id, school: req.user.school },
-      { isActive: false },
-      { new: true }
-    );
+    const notice = await Notice.findOneAndDelete({ _id: req.params.id, school: req.user.school });
     if (!notice) return res.status(404).json({ message: 'Notice not found' });
     res.json({ message: 'Notice deleted' });
   } catch (err) {
