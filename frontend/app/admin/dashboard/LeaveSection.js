@@ -143,6 +143,9 @@ function SubstitutionPanel({ leave, teachers }) {
                             {sub.startTime && (
                               <span className="text-slate-400 ml-2">{sub.startTime}–{sub.endTime}</span>
                             )}
+                            {sub.absentTeacherName && (
+                              <span className="text-slate-400 ml-2">· Absent: {sub.absentTeacherName}</span>
+                            )}
                           </div>
 
                           {sub.status === 'assigned' ? (
@@ -193,7 +196,12 @@ function LeaveCard({ leave, onResolve, onDelete, isPending, nameField = 'student
   const [confirmDel, setConfirmDel] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
   const [deleteErr,  setDeleteErr]  = useState('')
-  const name = leave[nameField]?.name || leave[nameField] || '—'
+  const name       = leave[nameField]?.name || leave[nameField] || '—'
+  const rollNumber = nameField === 'student' ? leave.student?.rollNumber : null
+  const className  = nameField === 'student' && leave.class
+    ? (leave.class.section ? `${leave.class.name} — ${leave.class.section}` : leave.class.name)
+    : null
+  const subject = nameField === 'teacher' ? leave.teacher?.subject : null
 
   async function handleDelete() {
     setDeleting(true)
@@ -208,7 +216,17 @@ function LeaveCard({ leave, onResolve, onDelete, isPending, nameField = 'student
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-semibold text-slate-800">{name}</span>
-            {leave.rollNumber && <span className="text-xs text-slate-500">#{leave.rollNumber}</span>}
+            {rollNumber && <span className="text-xs text-slate-500">Roll #{rollNumber}</span>}
+            {className && (
+              <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                {className}
+              </span>
+            )}
+            {subject && (
+              <span className="text-xs font-medium text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">
+                {subject}
+              </span>
+            )}
             <StatusBadge status={leave.status} />
           </div>
           <p className="text-sm text-slate-600">

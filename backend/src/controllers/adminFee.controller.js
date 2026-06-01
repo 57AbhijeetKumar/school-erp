@@ -20,7 +20,8 @@ const getClassFees = async (req, res) => {
       .sort({ rollNumber: 1, name: 1 })
       .select('name rollNumber');
 
-    const records = await Fee.find({ class: classId, school: schoolId, month });
+    const records = await Fee.find({ class: classId, school: schoolId, month })
+      .populate('markedBy', 'name');
     const feeMap  = {};
     records.forEach(r => { feeMap[r.student.toString()] = r; });
 
@@ -44,10 +45,11 @@ const getClassFees = async (req, res) => {
         studentId:  s._id,
         name:       s.name,
         rollNumber: s.rollNumber || null,
-        status:     fee?.status  || 'due',
-        amount:     fee?.amount  ?? 0,
-        paidAt:     fee?.paidAt  || null,
-        note:       fee?.note    || null,
+        status:      fee?.status          || 'due',
+        amount:      fee?.amount          ?? 0,
+        paidAt:      fee?.paidAt          || null,
+        note:        fee?.note            || null,
+        markedByName: fee?.markedBy?.name || null,
       };
     });
 

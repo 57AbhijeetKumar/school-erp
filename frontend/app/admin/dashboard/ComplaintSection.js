@@ -61,7 +61,14 @@ function ComplaintCard({ complaint, onAcknowledge, onResolve, onDelete, isPendin
               {student.name || '—'}
             </span>
             {student.rollNumber && (
-              <span className="text-xs text-slate-500">#{student.rollNumber}</span>
+              <span className="text-xs text-slate-500">Roll #{student.rollNumber}</span>
+            )}
+            {complaint.class && (
+              <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                {complaint.class.section
+                  ? `${complaint.class.name} — ${complaint.class.section}`
+                  : complaint.class.name}
+              </span>
             )}
             {/* Severity badge */}
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${SEVERITY_BADGE[complaint.severity] || 'bg-slate-100 text-slate-600'}`}>

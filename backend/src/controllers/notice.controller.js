@@ -27,8 +27,16 @@ const createNotice = async (req, res) => {
 const getNotices = async (req, res) => {
   try {
     const notices = await Notice.find({ school: req.user.school, isActive: true })
+      .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
-    res.json(notices);
+    res.json(notices.map(n => ({
+      _id:            n._id,
+      title:          n.title,
+      content:        n.content,
+      targetAudience: n.targetAudience,
+      createdByName:  n.createdBy?.name || null,
+      createdAt:      n.createdAt,
+    })));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

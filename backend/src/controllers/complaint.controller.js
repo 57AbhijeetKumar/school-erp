@@ -23,6 +23,7 @@ function shape(c, callerRole, callerId) {
     raisedByRole: c.raisedByRole,
     raisedByName: c.raisedByName,
     student:      c.student,
+    class:        c.class ? { id: c.class._id, name: c.class.name, section: c.class.section || null } : null,
     category:     c.category,
     severity:     c.severity,
     title:        c.title,
@@ -83,6 +84,7 @@ const getComplaintsForTeacher = async (req, res) => {
 
     const myComplaintsQuery = Complaint.find({ school: req.teacher.school, raisedByTeacher: req.teacher.id })
       .populate('student', 'name rollNumber')
+      .populate('class',   'name section')
       .populate('resolvedBy', 'name')
       .sort({ createdAt: -1 });
 
@@ -91,6 +93,7 @@ const getComplaintsForTeacher = async (req, res) => {
         myComplaintsQuery,
         Complaint.find({ school: req.teacher.school, class: cls._id })
           .populate('student', 'name rollNumber')
+          .populate('class',   'name section')
           .populate('resolvedBy', 'name')
           .sort({ createdAt: -1 }),
       ]);

@@ -192,6 +192,9 @@ export default function NoticeSection() {
                     <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{n.content}</p>
                     <p className="text-xs text-slate-400 mt-2">
                       {new Date(n.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {n.createdByName && (
+                        <span className="ml-2">· by <span className="font-medium">{n.createdByName}</span></span>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">

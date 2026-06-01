@@ -181,6 +181,7 @@ data class ComplaintStudent(val name: String, val rollNumber: String?)
 data class ComplaintItem(
     @SerializedName("_id") val id: String,
     val student:       ComplaintStudent?,
+    @SerializedName("class") val classInfo: ClassData?,
     val raisedByRole:  String,
     val raisedByName:  String,
     val category:      String,

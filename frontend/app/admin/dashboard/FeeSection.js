@@ -186,6 +186,7 @@ export default function FeeSection({ classes }) {
                   <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                   <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount</th>
                   <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Paid On</th>
+                  <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Marked By</th>
                   <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
                 </tr>
               </thead>
@@ -208,6 +209,9 @@ export default function FeeSection({ classes }) {
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 text-xs">
                       {s.paidAt ? new Date(s.paidAt).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-500 text-xs">
+                      {s.markedByName || '—'}
                     </td>
                     <td className="px-4 py-2.5">
                       {s.status === 'due' ? (

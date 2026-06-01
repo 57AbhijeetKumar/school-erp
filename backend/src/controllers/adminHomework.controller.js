@@ -13,12 +13,14 @@ const getClassHomework = async (req, res) => {
       .populate('assignedBy', 'name subject')
       .sort({ createdAt: -1 });
 
+    const className = cls.section ? `${cls.name} — ${cls.section}` : cls.name;
     res.json(list.map(h => ({
       id:          h._id,
       title:       h.title,
       description: h.description,
       subject:     h.subject || null,
       dueDate:     h.dueDate ? h.dueDate.toISOString().split('T')[0] : null,
+      className,
       assignedBy:  { id: h.assignedBy._id, name: h.assignedBy.name, subject: h.assignedBy.subject },
       attachments: h.attachments || [],
       createdAt:   h.createdAt,

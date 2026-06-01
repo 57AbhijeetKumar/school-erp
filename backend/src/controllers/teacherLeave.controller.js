@@ -76,7 +76,7 @@ const getAllTeacherLeaves = async (req, res) => {
 
     const [leaves, total] = await Promise.all([
       TeacherLeave.find(filter)
-        .populate('teacher',    'name email')
+        .populate('teacher',    'name email subject')
         .populate('resolvedBy', 'name')
         .sort({ createdAt: -1 })
         .skip(skip).limit(limit),

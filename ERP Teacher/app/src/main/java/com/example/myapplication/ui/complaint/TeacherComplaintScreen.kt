@@ -206,6 +206,20 @@ private fun ComplaintCard(
                                 Text("Roll: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             }
                         }
+                        complaint.classInfo?.let { cls ->
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFEEF2FF)
+                            ) {
+                                Text(
+                                    cls.fullName,
+                                    color      = Color(0xFF4338CA),
+                                    fontSize   = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
                     }
                     Surface(shape = RoundedCornerShape(20.dp), color = statusBg) {
                         Text(
