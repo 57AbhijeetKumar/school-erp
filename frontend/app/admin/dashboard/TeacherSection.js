@@ -58,6 +58,7 @@ export default function TeacherSection({ teachers, subjects = [] }) {
               <input
                 name="name"
                 required
+                maxLength={100}
                 placeholder="Ramesh Kumar"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />

@@ -125,6 +125,7 @@ function EditExamModal({ exam, subjects, onClose, onSaved }) {
             <input
               value={name}
               onChange={e => setName(e.target.value)}
+              maxLength={200}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
           </div>
@@ -158,6 +159,7 @@ function EditExamModal({ exam, subjects, onClose, onSaved }) {
                       value={editSubjects[0]?.name ?? ''}
                       onChange={e => updateRow(0, 'name', e.target.value)}
                       placeholder="Subject name *"
+                      maxLength={100}
                       className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                     />
                   )}
@@ -677,6 +679,7 @@ export default function ExamSection({ classes, initialExams, subjects = [] }) {
                 <label className="text-xs font-medium text-slate-600 mb-1 block">Exam Name *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Unit Test 1, Annual Exam"
+                  maxLength={200}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
               </div>
 

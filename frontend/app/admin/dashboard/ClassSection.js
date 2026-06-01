@@ -194,7 +194,7 @@ export default function ClassSection({ classes, teachers }) {
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                   Class Name <span className="text-red-400">*</span>
                 </label>
-                <input name="name" required placeholder='e.g. "Class 5" or "10th"' className={inp} />
+                <input name="name" required maxLength={50} placeholder='e.g. "Class 5" or "10th"' className={inp} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -371,7 +371,7 @@ export default function ClassSection({ classes, teachers }) {
                               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                                 Student Name <span className="text-red-400">*</span>
                               </label>
-                              <input name="name" required placeholder="Full name" className={inp} />
+                              <input name="name" required maxLength={100} placeholder="Full name" className={inp} />
                             </div>
                             <div>
                               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
@@ -493,7 +493,7 @@ export default function ClassSection({ classes, teachers }) {
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                       <div className="col-span-2 lg:col-span-1">
                                         <label className="block text-xs font-semibold text-slate-600 mb-1.5">Name <span className="text-red-400">*</span></label>
-                                        <input name="name" required defaultValue={s.name} className={inp} />
+                                        <input name="name" required maxLength={100} defaultValue={s.name} className={inp} />
                                       </div>
                                       <div>
                                         <label className="block text-xs font-semibold text-slate-600 mb-1.5">Roll No. <span className="text-slate-400 font-normal">(optional)</span></label>
@@ -501,7 +501,7 @@ export default function ClassSection({ classes, teachers }) {
                                       </div>
                                       <div>
                                         <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Name <span className="text-slate-400 font-normal">(optional)</span></label>
-                                        <input name="parentName" defaultValue={s.parentName || ''} placeholder="Father / Mother name" className={inp} />
+                                        <input name="parentName" maxLength={100} defaultValue={s.parentName || ''} placeholder="Father / Mother name" className={inp} />
                                       </div>
                                       <div>
                                         <label className="block text-xs font-semibold text-slate-600 mb-1.5">Parent Mobile <span className="text-slate-400 font-normal">(optional)</span></label>

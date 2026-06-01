@@ -79,6 +79,7 @@ export default function SubjectSection({ subjects }) {
               <input
                 name="name"
                 required
+                maxLength={100}
                 placeholder="e.g. Mathematics, Science, English"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
@@ -128,6 +129,7 @@ export default function SubjectSection({ subjects }) {
                   <input
                     value={editName}
                     onChange={e => { setEditName(e.target.value); setEditErr('') }}
+                    maxLength={100}
                     className="flex-1 min-w-0 px-2 py-1 border border-violet-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
                     placeholder="Subject name"
                     autoFocus
