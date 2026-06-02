@@ -56,7 +56,7 @@ fun HomeScreen(
     // Auto-logout when account is deactivated by admin
     LaunchedEffect(uiState.sessionExpired) {
         if (uiState.sessionExpired) {
-            navController.navigate("login") { popUpTo(0) { inclusive = true } }
+            navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
         }
     }
 
@@ -70,7 +70,7 @@ fun HomeScreen(
                     }
                     IconButton(onClick = {
                         viewModel.logout()
-                        navController.navigate("login") { popUpTo("home") { inclusive = true } }
+                        navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
                     }

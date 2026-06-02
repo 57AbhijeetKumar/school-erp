@@ -44,6 +44,7 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
                     val teacher = body.teacher
 
                     prefManager.saveToken(body.token)
+                    prefManager.saveRole("teacher")
                     prefManager.saveTeacher(
                         id      = teacher.id,
                         name    = teacher.name,

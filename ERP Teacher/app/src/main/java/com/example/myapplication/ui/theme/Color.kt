@@ -18,3 +18,9 @@ val GreenLight     = Color(0xFFF0FDF4)
 val GreenSurface   = Color(0xFFDCFCE7)
 val SlateText      = Color(0xFF1E293B)
 val SlateSubText   = Color(0xFF64748B)
+
+// Parent portal — Blue theme
+val BluePrimary    = Color(0xFF1565C0)
+val BlueDark       = Color(0xFF0D47A1)
+val BlueLight      = Color(0xFFE3F2FD)
+val BlueSurface    = Color(0xFFEEF4FF)
