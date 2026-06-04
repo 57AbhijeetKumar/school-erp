@@ -6,31 +6,35 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.ComplaintItem
-import com.example.myapplication.data.model.ComplaintsResponse
 import com.example.myapplication.data.model.StudentData
 import com.example.myapplication.data.model.SubmitComplaintRequest
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.ComplaintRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class ComplaintUiState(
-    val isLoading:       Boolean              = true,
-    val myComplaints:    List<ComplaintItem>  = emptyList(),
-    val classComplaints: List<ComplaintItem>  = emptyList(),
-    val classes:         List<ClassData>      = emptyList(),
-    val students:        List<StudentData>    = emptyList(),
-    val error:           String?              = null,
-    val isSubmitting:    Boolean              = false,
-    val submitSuccess:   Boolean              = false,
-    val submitError:     String?              = null,
-    val isClassTeacher:  Boolean              = false
+    val isLoading:       Boolean             = true,
+    val myComplaints:    List<ComplaintItem> = emptyList(),
+    val classComplaints: List<ComplaintItem> = emptyList(),
+    val classes:         List<ClassData>     = emptyList(),
+    val students:        List<StudentData>   = emptyList(),
+    val error:           String?             = null,
+    val isSubmitting:    Boolean             = false,
+    val submitSuccess:   Boolean             = false,
+    val submitError:     String?             = null,
+    val isClassTeacher:  Boolean             = false
 )
 
 class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
+
     private val prefManager = PreferenceManager(app)
-    private val _uiState    = MutableStateFlow(ComplaintUiState())
+    private val repository  = ComplaintRepository(RetrofitClient.api)
+
+    private val _uiState = MutableStateFlow(ComplaintUiState())
     val uiState: StateFlow<ComplaintUiState> = _uiState.asStateFlow()
 
     init { load() }
@@ -40,25 +44,21 @@ class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val complaintsResp = RetrofitClient.api.getComplaints("Bearer $token")
-                val studentsResp   = RetrofitClient.api.getSchoolStudents("Bearer $token")
-                val classesResp    = RetrofitClient.api.getSchoolClasses("Bearer $token")
-                val classResp      = RetrofitClient.api.getMyClass("Bearer $token")
+                val complaintsResult = repository.getComplaints(token)
+                val studentsResult   = repository.getSchoolStudents(token)
+                val classesResult    = repository.getSchoolClasses(token)
+                val myClassResult    = repository.getMyClass(token)
 
-                val complaints = if (complaintsResp.isSuccessful) complaintsResp.body()
-                                 else ComplaintsResponse(emptyList(), emptyList())
-                val classBody  = if (classResp.isSuccessful) classResp.body() else null
-                val allStudents = if (studentsResp.isSuccessful) studentsResp.body() ?: emptyList() else emptyList()
-                // Derive classes from students (preserves order, no extra field needed)
-                val classes = if (classesResp.isSuccessful) classesResp.body() ?: emptyList() else emptyList()
+                val complaints     = if (complaintsResult is NetworkResult.Success) complaintsResult.data else null
+                val isClassTeacher = myClassResult is NetworkResult.Success && myClassResult.data.isClassTeacher
 
                 _uiState.value = _uiState.value.copy(
                     isLoading       = false,
                     myComplaints    = complaints?.myComplaints    ?: emptyList(),
                     classComplaints = complaints?.classComplaints ?: emptyList(),
-                    students        = allStudents,
-                    classes         = classes,
-                    isClassTeacher  = classBody?.isClassTeacher   ?: false
+                    students        = if (studentsResult is NetworkResult.Success) studentsResult.data else emptyList(),
+                    classes         = if (classesResult is NetworkResult.Success) classesResult.data else emptyList(),
+                    isClassTeacher  = isClassTeacher
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
@@ -70,22 +70,14 @@ class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null)
-            try {
-                val resp = RetrofitClient.api.submitComplaint(
-                    "Bearer $token",
-                    SubmitComplaintRequest(studentId, category, severity, title, description)
-                )
-                if (resp.isSuccessful) {
+            when (repository.submitComplaint(token, SubmitComplaintRequest(studentId, category, severity, title, description))) {
+                is NetworkResult.Success -> {
                     _uiState.value = _uiState.value.copy(isSubmitting = false, submitSuccess = true)
                     load()
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isSubmitting = false,
-                        submitError  = "Failed to raise complaint"
-                    )
                 }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, submitError = e.message)
+                else -> _uiState.value = _uiState.value.copy(
+                    isSubmitting = false, submitError = "Failed to raise complaint"
+                )
             }
         }
     }
@@ -93,10 +85,8 @@ class TeacherComplaintViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteComplaint(id: String) {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
-            try {
-                RetrofitClient.api.deleteComplaint("Bearer $token", id)
-                load()
-            } catch (_: Exception) {}
+            repository.deleteComplaint(token, id)
+            load()
         }
     }
 

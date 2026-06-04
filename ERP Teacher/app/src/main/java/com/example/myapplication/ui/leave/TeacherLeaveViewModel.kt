@@ -9,6 +9,8 @@ import com.example.myapplication.data.model.StudentLeaveItem
 import com.example.myapplication.data.model.SubmitLeaveRequest
 import com.example.myapplication.data.model.TeacherLeaveItem
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.LeaveRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,19 +19,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class TeacherLeaveUiState(
-    val isLoading:       Boolean               = true,
-    val myLeaves:        List<TeacherLeaveItem> = emptyList(),
-    val studentLeaves:   List<StudentLeaveItem> = emptyList(),
-    val error:           String?               = null,
-    val isSubmitting:    Boolean               = false,
-    val submitSuccess:   Boolean               = false,
-    val submitError:     String?               = null,
-    val isClassTeacher:  Boolean               = false
+    val isLoading:      Boolean               = true,
+    val myLeaves:       List<TeacherLeaveItem> = emptyList(),
+    val studentLeaves:  List<StudentLeaveItem> = emptyList(),
+    val error:          String?               = null,
+    val isSubmitting:   Boolean               = false,
+    val submitSuccess:  Boolean               = false,
+    val submitError:    String?               = null,
+    val isClassTeacher: Boolean               = false
 )
 
 class TeacherLeaveViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = LeaveRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(TeacherLeaveUiState())
     val uiState: StateFlow<TeacherLeaveUiState> = _uiState.asStateFlow()
@@ -41,21 +44,25 @@ class TeacherLeaveViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val (myResp, myClassResp) = coroutineScope {
-                    val myLeavesD = async { RetrofitClient.api.getMyLeaves("Bearer $token") }
-                    val myClassD  = async { RetrofitClient.api.getMyClass("Bearer $token") }
-                    Pair(myLeavesD.await(), myClassD.await())
+                val (myLeavesResult, myClassResult) = coroutineScope {
+                    Pair(
+                        async { repository.getMyLeaves(token) }.await(),
+                        async { repository.getMyClass(token) }.await()
+                    )
                 }
-                val isClassTeacher = myClassResp.isSuccessful && myClassResp.body()?.isClassTeacher == true
+                val isClassTeacher = myClassResult is NetworkResult.Success &&
+                        myClassResult.data.isClassTeacher
 
-                val studentLeaves = if (isClassTeacher) {
-                    val studentResp = RetrofitClient.api.getStudentLeaveRequests("Bearer $token")
-                    if (studentResp.isSuccessful) studentResp.body() ?: emptyList() else emptyList()
+                val studentLeaves: List<StudentLeaveItem> = if (isClassTeacher) {
+                    when (val r = repository.getStudentLeaveRequests(token)) {
+                        is NetworkResult.Success -> r.data
+                        else -> emptyList()
+                    }
                 } else emptyList()
 
                 _uiState.value = _uiState.value.copy(
                     isLoading      = false,
-                    myLeaves       = if (myResp.isSuccessful) myResp.body() ?: emptyList() else emptyList(),
+                    myLeaves       = if (myLeavesResult is NetworkResult.Success) myLeavesResult.data else emptyList(),
                     studentLeaves  = studentLeaves,
                     isClassTeacher = isClassTeacher
                 )
@@ -73,19 +80,14 @@ class TeacherLeaveViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null, submitSuccess = false)
-            try {
-                val response = RetrofitClient.api.submitTeacherLeave(
-                    "Bearer $token",
-                    SubmitLeaveRequest(fromDate, toDate, reason.trim(), leaveType)
-                )
-                if (response.isSuccessful) {
+            when (repository.submitLeave(token, SubmitLeaveRequest(fromDate, toDate, reason.trim(), leaveType))) {
+                is NetworkResult.Success -> {
                     _uiState.value = _uiState.value.copy(isSubmitting = false, submitSuccess = true)
                     load()
-                } else {
-                    _uiState.value = _uiState.value.copy(isSubmitting = false, submitError = "Failed to submit leave request")
                 }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, submitError = "Cannot connect to server")
+                else -> _uiState.value = _uiState.value.copy(
+                    isSubmitting = false, submitError = "Failed to submit leave request"
+                )
             }
         }
     }
@@ -93,14 +95,14 @@ class TeacherLeaveViewModel(app: Application) : AndroidViewModel(app) {
     fun resolveStudentLeave(leaveId: String, action: String, note: String = "") {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
-            try {
-                RetrofitClient.api.resolveStudentLeave("Bearer $token", leaveId, ResolveLeaveRequest(action, note))
-                _uiState.value = _uiState.value.copy(
-                    studentLeaves = _uiState.value.studentLeaves.map {
-                        if (it.id == leaveId) it.copy(status = if (action == "approve") "approved" else "rejected") else it
-                    }
-                )
-            } catch (_: Exception) { /* silent */ }
+            repository.resolveStudentLeave(token, leaveId, ResolveLeaveRequest(action, note))
+            _uiState.value = _uiState.value.copy(
+                studentLeaves = _uiState.value.studentLeaves.map {
+                    if (it.id == leaveId)
+                        it.copy(status = if (action == "approve") "approved" else "rejected")
+                    else it
+                }
+            )
         }
     }
 

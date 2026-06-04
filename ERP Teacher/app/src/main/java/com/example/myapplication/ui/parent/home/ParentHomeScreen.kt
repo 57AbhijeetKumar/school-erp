@@ -36,9 +36,11 @@ fun ParentHomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(uiState.sessionExpired) {
-        if (uiState.sessionExpired) {
-            navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                ParentHomeEvent.SessionExpired -> navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
+            }
         }
     }
 

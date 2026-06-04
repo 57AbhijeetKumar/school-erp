@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.ParentNoticeItem
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.ParentRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +22,7 @@ data class ParentNoticeUiState(
 class ParentNoticeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = ParentRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(ParentNoticeUiState())
     val uiState: StateFlow<ParentNoticeUiState> = _uiState.asStateFlow()
@@ -30,14 +33,14 @@ class ParentNoticeViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            try {
-                val response = RetrofitClient.api.getParentNotices("Bearer $token")
-                _uiState.value = ParentNoticeUiState(
-                    isLoading = false,
-                    notices   = if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
+            when (val result = repository.getNotices(token)) {
+                is NetworkResult.Success -> _uiState.value = ParentNoticeUiState(
+                    isLoading = false, notices = result.data
                 )
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Cannot connect to server")
+                is NetworkResult.NetworkError -> _uiState.value = ParentNoticeUiState(
+                    isLoading = false, error = "Cannot connect to server"
+                )
+                else -> _uiState.value = ParentNoticeUiState(isLoading = false)
             }
         }
     }

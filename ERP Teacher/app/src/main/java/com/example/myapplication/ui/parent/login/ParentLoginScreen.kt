@@ -39,9 +39,12 @@ fun ParentLoginScreen(
     var password     by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) {
-            navController.navigate("parent_home") { popUpTo("role_select") { inclusive = false } }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                ParentLoginEvent.NavigateToParentHome ->
+                    navController.navigate("parent_home") { popUpTo("role_select") { inclusive = false } }
+            }
         }
     }
 

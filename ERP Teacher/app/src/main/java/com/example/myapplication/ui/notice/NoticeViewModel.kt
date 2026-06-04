@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.NoticeItem
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.NoticeRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +22,7 @@ data class NoticeUiState(
 class NoticeViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = NoticeRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(NoticeUiState())
     val uiState: StateFlow<NoticeUiState> = _uiState.asStateFlow()
@@ -30,14 +33,14 @@ class NoticeViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            try {
-                val response = RetrofitClient.api.getNotices("Bearer $token")
-                _uiState.value = NoticeUiState(
-                    isLoading = false,
-                    notices   = if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
+            when (val result = repository.getNotices(token)) {
+                is NetworkResult.Success -> _uiState.value = NoticeUiState(
+                    isLoading = false, notices = result.data
                 )
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "Cannot connect to server")
+                is NetworkResult.NetworkError -> _uiState.value = NoticeUiState(
+                    isLoading = false, error = "Cannot connect to server"
+                )
+                else -> _uiState.value = NoticeUiState(isLoading = false)
             }
         }
     }

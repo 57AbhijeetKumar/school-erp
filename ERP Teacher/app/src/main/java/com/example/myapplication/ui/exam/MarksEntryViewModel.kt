@@ -6,36 +6,36 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.ExamItem
 import com.example.myapplication.data.model.MarkEntry
-import com.example.myapplication.data.model.StudentMarksEntry
 import com.example.myapplication.data.model.StudentResultEntry
 import com.example.myapplication.data.model.SubmitMarksRequest
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.ExamRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// Mutable runtime state for marks entry
 data class StudentMarksState(
     val studentId:  String,
     val name:       String,
     val rollNumber: String?,
-    // subject name → current text input (empty string if not entered)
     val marks:      Map<String, String>
 )
 
 data class MarksEntryUiState(
-    val isLoading:   Boolean                  = true,
-    val exam:        ExamItem?                = null,
-    val students:    List<StudentMarksState>  = emptyList(),
-    val isSaving:    Boolean                  = false,
-    val saveSuccess: Boolean                  = false,
-    val error:       String?                  = null
+    val isLoading:   Boolean                 = true,
+    val exam:        ExamItem?               = null,
+    val students:    List<StudentMarksState> = emptyList(),
+    val isSaving:    Boolean                 = false,
+    val saveSuccess: Boolean                 = false,
+    val error:       String?                 = null
 )
 
 class MarksEntryViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = ExamRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(MarksEntryUiState())
     val uiState: StateFlow<MarksEntryUiState> = _uiState.asStateFlow()
@@ -44,13 +44,9 @@ class MarksEntryViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
             _uiState.value = MarksEntryUiState(isLoading = true)
-            try {
-                val response = RetrofitClient.api.getExamForMarks("Bearer $token", examId)
-                if (response.isSuccessful) {
-                    val body = response.body() ?: run {
-                        _uiState.value = MarksEntryUiState(isLoading = false, error = "Empty response from server")
-                        return@launch
-                    }
+            when (val result = repository.getExamForMarks(token, examId)) {
+                is NetworkResult.Success -> {
+                    val body = result.data
                     _uiState.value = MarksEntryUiState(
                         isLoading = false,
                         exam      = body.exam,
@@ -65,23 +61,25 @@ class MarksEntryViewModel(app: Application) : AndroidViewModel(app) {
                             )
                         }
                     )
-                } else {
-                    _uiState.value = MarksEntryUiState(isLoading = false, error = "Failed to load marks")
                 }
-            } catch (_: Exception) {
-                _uiState.value = MarksEntryUiState(isLoading = false, error = "Cannot connect to server")
+                is NetworkResult.NetworkError -> _uiState.value = MarksEntryUiState(
+                    isLoading = false, error = "Cannot connect to server"
+                )
+                else -> _uiState.value = MarksEntryUiState(isLoading = false, error = "Failed to load marks")
             }
         }
     }
 
     fun updateMark(studentId: String, subject: String, value: String) {
         val current = _uiState.value
-        val updated = current.students.map { s ->
-            if (s.studentId == studentId)
-                s.copy(marks = s.marks.toMutableMap().also { it[subject] = value })
-            else s
-        }
-        _uiState.value = current.copy(students = updated, saveSuccess = false)
+        _uiState.value = current.copy(
+            students = current.students.map { s ->
+                if (s.studentId == studentId)
+                    s.copy(marks = s.marks.toMutableMap().also { it[subject] = value })
+                else s
+            },
+            saveSuccess = false
+        )
     }
 
     fun saveMarks(examId: String) {
@@ -91,29 +89,23 @@ class MarksEntryViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true, error = null)
-            try {
-                val results = state.students
-                    .map { s ->
-                        StudentResultEntry(
-                            studentId = s.studentId,
-                            marks     = s.marks.mapNotNull { (sub, value) ->
-                                value.toIntOrNull()?.let { obtained ->
-                                    MarkEntry(subject = sub, obtained = obtained)
-                                }
-                            }
-                        )
-                    }
-                    .filter { it.marks.isNotEmpty() }  // skip students with no marks filled
-                val response = RetrofitClient.api.submitMarks(
-                    "Bearer $token", examId, SubmitMarksRequest(results)
-                )
-                if (response.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(isSaving = false, saveSuccess = true)
-                } else {
-                    _uiState.value = _uiState.value.copy(isSaving = false, error = "Failed to save marks")
+            val results = state.students
+                .map { s ->
+                    StudentResultEntry(
+                        studentId = s.studentId,
+                        marks     = s.marks.mapNotNull { (sub, value) ->
+                            value.toIntOrNull()?.let { MarkEntry(subject = sub, obtained = it) }
+                        }
+                    )
                 }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isSaving = false, error = "Cannot connect to server")
+                .filter { it.marks.isNotEmpty() }
+            when (repository.submitMarks(token, examId, SubmitMarksRequest(results))) {
+                is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, saveSuccess = true
+                )
+                else -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = "Failed to save marks"
+                )
             }
         }
     }

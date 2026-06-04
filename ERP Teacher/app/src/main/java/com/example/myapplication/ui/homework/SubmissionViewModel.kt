@@ -8,6 +8,8 @@ import com.example.myapplication.data.model.MarkSubmissionsRequest
 import com.example.myapplication.data.model.SubmissionEntry
 import com.example.myapplication.data.model.SubmissionRecord
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.HomeworkRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +27,9 @@ data class SubmissionUiState(
 
 class SubmissionViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefs = PreferenceManager(app)
+    private val prefs      = PreferenceManager(app)
+    private val repository = HomeworkRepository(RetrofitClient.api)
+
     private val _uiState = MutableStateFlow(SubmissionUiState())
     val uiState: StateFlow<SubmissionUiState> = _uiState.asStateFlow()
     private var homeworkId = ""
@@ -35,29 +39,36 @@ class SubmissionViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefs.getToken() ?: return
         viewModelScope.launch {
             _uiState.value = SubmissionUiState(isLoading = true)
-            try {
-                val res = RetrofitClient.api.getSubmissions("Bearer $token", id)
-                if (res.isSuccessful) {
-                    val data = res.body()!!
-                    _uiState.value = SubmissionUiState(isLoading = false, title = data.title, canMark = data.canMark, students = data.students)
-                } else {
-                    _uiState.value = SubmissionUiState(isLoading = false, error = "Failed to load submissions")
+            when (val result = repository.getSubmissions(token, id)) {
+                is NetworkResult.Success -> {
+                    val data = result.data
+                    _uiState.value = SubmissionUiState(
+                        isLoading = false,
+                        title     = data.title,
+                        canMark   = data.canMark,
+                        students  = data.students
+                    )
                 }
-            } catch (_: Exception) {
-                _uiState.value = SubmissionUiState(isLoading = false, error = "Cannot connect to server")
+                else -> _uiState.value = SubmissionUiState(
+                    isLoading = false, error = "Failed to load submissions"
+                )
             }
         }
     }
 
     fun updateStatus(studentId: String, status: String) {
         _uiState.value = _uiState.value.copy(
-            students = _uiState.value.students.map { if (it.studentId == studentId) it.copy(status = status) else it }
+            students = _uiState.value.students.map {
+                if (it.studentId == studentId) it.copy(status = status) else it
+            }
         )
     }
 
     fun updateRemark(studentId: String, remark: String) {
         _uiState.value = _uiState.value.copy(
-            students = _uiState.value.students.map { if (it.studentId == studentId) it.copy(remark = remark) else it }
+            students = _uiState.value.students.map {
+                if (it.studentId == studentId) it.copy(remark = remark) else it
+            }
         )
     }
 
@@ -65,15 +76,12 @@ class SubmissionViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefs.getToken() ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSaving = true, saveSuccess = false)
-            try {
-                val entries = _uiState.value.students.map { SubmissionEntry(it.studentId, it.status, it.remark) }
-                val res = RetrofitClient.api.markSubmissions("Bearer $token", homeworkId, MarkSubmissionsRequest(entries))
-                _uiState.value = if (res.isSuccessful)
-                    _uiState.value.copy(isSaving = false, saveSuccess = true)
-                else
-                    _uiState.value.copy(isSaving = false, error = "Failed to save")
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isSaving = false, error = "Cannot connect to server")
+            val entries = _uiState.value.students.map { SubmissionEntry(it.studentId, it.status, it.remark) }
+            when (repository.markSubmissions(token, homeworkId, MarkSubmissionsRequest(entries))) {
+                is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, saveSuccess = true
+                )
+                else -> _uiState.value = _uiState.value.copy(isSaving = false, error = "Failed to save")
             }
         }
     }

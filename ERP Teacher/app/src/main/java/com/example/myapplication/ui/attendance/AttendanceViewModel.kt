@@ -8,6 +8,8 @@ import com.example.myapplication.data.model.AttendanceEntry
 import com.example.myapplication.data.model.AttendanceRecord
 import com.example.myapplication.data.model.MarkAttendanceRequest
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.AttendanceRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,22 +19,22 @@ import java.util.Calendar
 import java.util.Locale
 
 data class AttendanceUiState(
-    val isLoading:  Boolean               = true,
-    val isSaving:   Boolean               = false,
-    val isMarked:   Boolean               = false,
-    val date:       String                = "",
-    val records:    List<AttendanceRecord> = emptyList(),
-    val error:      String?               = null,
-    val saveSuccess: Boolean              = false
+    val isLoading:   Boolean               = true,
+    val isSaving:    Boolean               = false,
+    val isMarked:    Boolean               = false,
+    val date:        String                = "",
+    val records:     List<AttendanceRecord> = emptyList(),
+    val error:       String?               = null,
+    val saveSuccess: Boolean               = false
 )
 
 class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefManager = PreferenceManager(app)
-    private val dateFormat   = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val prefManager   = PreferenceManager(app)
+    private val repository    = AttendanceRepository(RetrofitClient.api)
+    private val dateFormat    = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val displayFormat = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
-
-    private val calendar = Calendar.getInstance()
+    private val calendar      = Calendar.getInstance()
 
     private val _uiState = MutableStateFlow(AttendanceUiState(date = todayString()))
     val uiState: StateFlow<AttendanceUiState> = _uiState.asStateFlow()
@@ -49,17 +51,14 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
 
     fun goToNextDay() {
         val todayStr = dateFormat.format(Calendar.getInstance().time)
-        val calStr   = dateFormat.format(calendar.time)
-        if (calStr < todayStr) {          // compare date strings, not datetime objects
+        if (dateFormat.format(calendar.time) < todayStr) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
             onDateChanged()
         }
     }
 
-    fun isToday(): Boolean {
-        val todayStr = dateFormat.format(Calendar.getInstance().time)
-        return dateFormat.format(calendar.time) == todayStr
-    }
+    fun isToday(): Boolean =
+        dateFormat.format(calendar.time) == dateFormat.format(Calendar.getInstance().time)
 
     private fun onDateChanged() {
         _displayDate.value = displayFormat.format(calendar.time)
@@ -70,11 +69,7 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleStatus(studentId: String) {
         val updated = _uiState.value.records.map { r ->
             if (r.studentId == studentId)
-                r.copy(status = when (r.status) {
-                    "present" -> "absent"
-                    "absent"  -> "late"
-                    else      -> "present"
-                })
+                r.copy(status = when (r.status) { "present" -> "absent"; "absent" -> "late"; else -> "present" })
             else r
         }
         _uiState.value = _uiState.value.copy(records = updated, saveSuccess = false)
@@ -88,8 +83,10 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun markAllPresent() {
-        val updated = _uiState.value.records.map { it.copy(status = "present") }
-        _uiState.value = _uiState.value.copy(records = updated, saveSuccess = false)
+        _uiState.value = _uiState.value.copy(
+            records = _uiState.value.records.map { it.copy(status = "present") },
+            saveSuccess = false
+        )
     }
 
     fun saveAttendance() {
@@ -99,28 +96,16 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true, saveSuccess = false, error = null)
-            try {
-                val request = MarkAttendanceRequest(
-                    date = state.date,
-                    records = state.records.map { AttendanceEntry(it.studentId, it.status) }
+            val request = MarkAttendanceRequest(
+                date    = state.date,
+                records = state.records.map { AttendanceEntry(it.studentId, it.status) }
+            )
+            when (repository.markAttendance(token, request)) {
+                is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, isMarked = true, saveSuccess = true
                 )
-                val response = RetrofitClient.api.markAttendance("Bearer $token", request)
-                if (response.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(
-                        isSaving = false,
-                        isMarked = true,
-                        saveSuccess = true
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isSaving = false,
-                        error = "Failed to save attendance"
-                    )
-                }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    error = "Cannot connect to server"
+                else -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = "Failed to save attendance"
                 )
             }
         }
@@ -129,32 +114,20 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
     private fun fetchAttendance() {
         val token = prefManager.getToken() ?: return
         val date  = dateFormat.format(calendar.time)
-
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            try {
-                val response = RetrofitClient.api.getAttendance("Bearer $token", date)
-                if (response.isSuccessful) {
-                    val body = response.body() ?: run {
-                        _uiState.value = _uiState.value.copy(isLoading = false, error = "Empty response from server")
-                        return@launch
-                    }
+            when (val result = repository.getAttendance(token, date)) {
+                is NetworkResult.Success -> {
+                    val body = result.data
                     _uiState.value = AttendanceUiState(
                         isLoading = false,
                         date      = body.date,
                         isMarked  = body.isMarked,
                         records   = body.records.toMutableList()
                     )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Failed to load attendance"
-                    )
                 }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Cannot connect to server"
+                else -> _uiState.value = _uiState.value.copy(
+                    isLoading = false, error = "Failed to load attendance"
                 )
             }
         }

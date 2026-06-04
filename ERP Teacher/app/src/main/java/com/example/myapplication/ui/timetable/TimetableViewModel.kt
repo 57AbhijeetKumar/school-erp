@@ -7,6 +7,8 @@ import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.SubstitutionItem
 import com.example.myapplication.data.model.TimetableResponse
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.TimetableRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,15 +17,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class TimetableUiState(
-    val isLoading:     Boolean               = true,
-    val timetable:     TimetableResponse?    = null,
+    val isLoading:     Boolean                = true,
+    val timetable:     TimetableResponse?     = null,
     val substitutions: List<SubstitutionItem> = emptyList(),
-    val error:         String?               = null
+    val error:         String?                = null
 )
 
 class TimetableViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = TimetableRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(TimetableUiState())
     val uiState: StateFlow<TimetableUiState> = _uiState.asStateFlow()
@@ -36,17 +39,17 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 coroutineScope {
-                    val timetableDeferred = async { RetrofitClient.api.getTimetable("Bearer $token") }
-                    val subsDeferred      = async { RetrofitClient.api.getTodaySubstitutions("Bearer $token") }
-
-                    val ttResponse   = timetableDeferred.await()
-                    val subsResponse = subsDeferred.await()
+                    val ttDeferred   = async { repository.getTimetable(token) }
+                    val subsDeferred = async { repository.getTodaySubstitutions(token) }
+                    val ttResult     = ttDeferred.await()
+                    val subsResult   = subsDeferred.await()
 
                     _uiState.value = TimetableUiState(
                         isLoading     = false,
-                        timetable     = if (ttResponse.isSuccessful) ttResponse.body() else null,
-                        substitutions = if (subsResponse.isSuccessful) subsResponse.body() ?: emptyList() else emptyList(),
-                        error         = if (!ttResponse.isSuccessful && ttResponse.code() != 404) "Failed to load timetable" else null
+                        timetable     = if (ttResult is NetworkResult.Success) ttResult.data else null,
+                        substitutions = if (subsResult is NetworkResult.Success) subsResult.data else emptyList(),
+                        error         = if (ttResult is NetworkResult.Error && ttResult.code != 404)
+                                            "Failed to load timetable" else null
                     )
                 }
             } catch (_: Exception) {

@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.*
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.ParentRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,61 +35,62 @@ data class ExamsState(
 )
 
 data class FeesState(
-    val isLoading: Boolean             = false,
-    val data:      ChildFeesResponse?  = null,
-    val error:     String?             = null
+    val isLoading: Boolean            = false,
+    val data:      ChildFeesResponse? = null,
+    val error:     String?            = null
 )
 
 data class LeaveState(
-    val isLoading:     Boolean                  = false,
-    val history:       List<StudentLeaveRecord> = emptyList(),
-    val error:         String?                  = null,
-    val isSubmitting:  Boolean                  = false,
-    val submitSuccess: Boolean                  = false,
-    val submitError:   String?                  = null
+    val isLoading:    Boolean                  = false,
+    val history:      List<StudentLeaveRecord> = emptyList(),
+    val error:        String?                  = null,
+    val isSubmitting: Boolean                  = false,
+    val submitSuccess: Boolean                 = false,
+    val submitError:  String?                  = null
 )
 
 data class TimetableState(
-    val isLoading: Boolean                = false,
+    val isLoading: Boolean                 = false,
     val data:      ChildTimetableResponse? = null,
-    val error:     String?                = null
+    val error:     String?                 = null
 )
 
 data class ComplaintsState(
-    val isLoading:     Boolean                   = false,
-    val items:         List<ParentComplaintItem> = emptyList(),
-    val error:         String?                   = null,
-    val isSubmitting:  Boolean                   = false,
-    val submitSuccess: Boolean                   = false,
-    val submitError:   String?                   = null
+    val isLoading:    Boolean                   = false,
+    val items:        List<ParentComplaintItem> = emptyList(),
+    val error:        String?                   = null,
+    val isSubmitting: Boolean                   = false,
+    val submitSuccess: Boolean                  = false,
+    val submitError:  String?                   = null
 )
 
 class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefManager = PreferenceManager(app)
-    private val monthFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+    private val prefManager  = PreferenceManager(app)
+    private val repository   = ParentRepository(RetrofitClient.api)
+    private val monthFormat  = SimpleDateFormat("yyyy-MM", Locale.getDefault())
 
     private var studentId = ""
 
-    private val _attendance  = MutableStateFlow(AttendanceState())
+    private val _attendance   = MutableStateFlow(AttendanceState())
     val attendance: StateFlow<AttendanceState> = _attendance.asStateFlow()
 
-    private val _homework    = MutableStateFlow(HomeworkState())
+    private val _homework     = MutableStateFlow(HomeworkState())
     val homework: StateFlow<HomeworkState> = _homework.asStateFlow()
 
-    private val _exams       = MutableStateFlow(ExamsState())
+    private val _exams        = MutableStateFlow(ExamsState())
     val exams: StateFlow<ExamsState> = _exams.asStateFlow()
 
-    private val _fees        = MutableStateFlow(FeesState())
+    private val _fees         = MutableStateFlow(FeesState())
     val fees: StateFlow<FeesState> = _fees.asStateFlow()
 
-    private val _leave       = MutableStateFlow(LeaveState())
+    private val _leave        = MutableStateFlow(LeaveState())
     val leave: StateFlow<LeaveState> = _leave.asStateFlow()
 
-    private val _timetable   = MutableStateFlow(TimetableState())
+    private val _timetable    = MutableStateFlow(TimetableState())
     val timetable: StateFlow<TimetableState> = _timetable.asStateFlow()
 
-    private val _complaints  = MutableStateFlow(ComplaintsState())
+    private val _complaints   = MutableStateFlow(ComplaintsState())
     val complaints: StateFlow<ComplaintsState> = _complaints.asStateFlow()
 
     private val _selectedMonth = MutableStateFlow(currentMonth())
@@ -110,14 +113,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         _selectedMonth.value = month
         _attendance.value = AttendanceState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildAttendance("Bearer $token", studentId, month)
-                _attendance.value = if (r.isSuccessful)
-                    AttendanceState(data = r.body())
-                else
-                    AttendanceState(error = "Failed to load attendance")
-            } catch (_: Exception) {
-                _attendance.value = AttendanceState(error = "Cannot connect to server")
+            _attendance.value = when (val r = repository.getChildAttendance(token, studentId, month)) {
+                is NetworkResult.Success -> AttendanceState(data = r.data)
+                else -> AttendanceState(error = "Failed to load attendance")
             }
         }
     }
@@ -126,14 +124,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _homework.value = HomeworkState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildHomework("Bearer $token", studentId)
-                _homework.value = if (r.isSuccessful)
-                    HomeworkState(items = r.body() ?: emptyList())
-                else
-                    HomeworkState(error = "Failed to load homework")
-            } catch (_: Exception) {
-                _homework.value = HomeworkState(error = "Cannot connect to server")
+            _homework.value = when (val r = repository.getChildHomework(token, studentId)) {
+                is NetworkResult.Success -> HomeworkState(items = r.data)
+                else -> HomeworkState(error = "Failed to load homework")
             }
         }
     }
@@ -142,14 +135,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _exams.value = ExamsState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildExams("Bearer $token", studentId)
-                _exams.value = if (r.isSuccessful)
-                    ExamsState(items = r.body() ?: emptyList())
-                else
-                    ExamsState(error = "Failed to load exams")
-            } catch (_: Exception) {
-                _exams.value = ExamsState(error = "Cannot connect to server")
+            _exams.value = when (val r = repository.getChildExams(token, studentId)) {
+                is NetworkResult.Success -> ExamsState(items = r.data)
+                else -> ExamsState(error = "Failed to load exams")
             }
         }
     }
@@ -158,14 +146,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _fees.value = FeesState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildFees("Bearer $token", studentId)
-                _fees.value = if (r.isSuccessful)
-                    FeesState(data = r.body())
-                else
-                    FeesState(error = "Failed to load fees")
-            } catch (_: Exception) {
-                _fees.value = FeesState(error = "Cannot connect to server")
+            _fees.value = when (val r = repository.getChildFees(token, studentId)) {
+                is NetworkResult.Success -> FeesState(data = r.data)
+                else -> FeesState(error = "Failed to load fees")
             }
         }
     }
@@ -174,14 +157,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _leave.value = _leave.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getParentLeaveHistory("Bearer $token", studentId)
-                _leave.value = if (r.isSuccessful)
-                    LeaveState(history = r.body() ?: emptyList())
-                else
-                    LeaveState(error = "Failed to load leave history")
-            } catch (_: Exception) {
-                _leave.value = LeaveState(error = "Cannot connect to server")
+            _leave.value = when (val r = repository.getLeaveHistory(token, studentId)) {
+                is NetworkResult.Success -> LeaveState(history = r.data)
+                else -> LeaveState(error = "Failed to load leave history")
             }
         }
     }
@@ -194,19 +172,14 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
         _leave.value = _leave.value.copy(isSubmitting = true, submitError = null, submitSuccess = false)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.submitParentLeave(
-                    "Bearer $token", studentId,
-                    ParentSubmitLeaveRequest(fromDate, toDate, reason.trim())
-                )
-                if (r.isSuccessful) {
+            when (repository.submitLeave(token, studentId, ParentSubmitLeaveRequest(fromDate, toDate, reason.trim()))) {
+                is NetworkResult.Success -> {
                     _leave.value = _leave.value.copy(isSubmitting = false, submitSuccess = true)
                     loadLeaveHistory()
-                } else {
-                    _leave.value = _leave.value.copy(isSubmitting = false, submitError = "Failed to submit leave")
                 }
-            } catch (_: Exception) {
-                _leave.value = _leave.value.copy(isSubmitting = false, submitError = "Cannot connect to server")
+                else -> _leave.value = _leave.value.copy(
+                    isSubmitting = false, submitError = "Failed to submit leave"
+                )
             }
         }
     }
@@ -219,14 +192,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _timetable.value = TimetableState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildTimetable("Bearer $token", studentId)
-                _timetable.value = if (r.isSuccessful)
-                    TimetableState(data = r.body())
-                else
-                    TimetableState(error = "Failed to load timetable")
-            } catch (_: Exception) {
-                _timetable.value = TimetableState(error = "Cannot connect to server")
+            _timetable.value = when (val r = repository.getChildTimetable(token, studentId)) {
+                is NetworkResult.Success -> TimetableState(data = r.data)
+                else -> TimetableState(error = "Failed to load timetable")
             }
         }
     }
@@ -235,14 +203,9 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         val token = prefManager.getParentToken() ?: return
         _complaints.value = ComplaintsState(isLoading = true)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.getChildComplaints("Bearer $token", studentId)
-                _complaints.value = if (r.isSuccessful)
-                    ComplaintsState(items = r.body() ?: emptyList())
-                else
-                    ComplaintsState(error = "Failed to load complaints")
-            } catch (_: Exception) {
-                _complaints.value = ComplaintsState(error = "Cannot connect to server")
+            _complaints.value = when (val r = repository.getChildComplaints(token, studentId)) {
+                is NetworkResult.Success -> ComplaintsState(items = r.data)
+                else -> ComplaintsState(error = "Failed to load complaints")
             }
         }
     }
@@ -255,19 +218,17 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
         _complaints.value = _complaints.value.copy(isSubmitting = true, submitError = null, submitSuccess = false)
         viewModelScope.launch {
-            try {
-                val r = RetrofitClient.api.submitChildComplaint(
-                    "Bearer $token", studentId,
-                    SubmitParentComplaintRequest(category, severity, title.trim(), description.trim())
-                )
-                if (r.isSuccessful) {
+            when (repository.submitChildComplaint(
+                token, studentId,
+                SubmitParentComplaintRequest(category, severity, title.trim(), description.trim())
+            )) {
+                is NetworkResult.Success -> {
                     _complaints.value = _complaints.value.copy(isSubmitting = false, submitSuccess = true)
                     loadComplaints()
-                } else {
-                    _complaints.value = _complaints.value.copy(isSubmitting = false, submitError = "Failed to raise complaint")
                 }
-            } catch (_: Exception) {
-                _complaints.value = _complaints.value.copy(isSubmitting = false, submitError = "Cannot connect to server")
+                else -> _complaints.value = _complaints.value.copy(
+                    isSubmitting = false, submitError = "Failed to raise complaint"
+                )
             }
         }
     }
@@ -275,10 +236,8 @@ class ChildDetailViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteComplaint(id: String) {
         val token = prefManager.getParentToken() ?: return
         viewModelScope.launch {
-            try {
-                RetrofitClient.api.deleteChildComplaint("Bearer $token", id)
-                loadComplaints()
-            } catch (_: Exception) {}
+            repository.deleteChildComplaint(token, id)
+            loadComplaints()
         }
     }
 

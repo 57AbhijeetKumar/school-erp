@@ -43,12 +43,15 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var showPass by remember { mutableStateOf(false) }
 
-    // Navigate to Home on success, then reload the shared HomeViewModel
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            onLoginSuccess()
-            navController.navigate("home") {
-                popUpTo("login") { inclusive = true }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                LoginEvent.NavigateToHome -> {
+                    onLoginSuccess()
+                    navController.navigate("home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
             }
         }
     }

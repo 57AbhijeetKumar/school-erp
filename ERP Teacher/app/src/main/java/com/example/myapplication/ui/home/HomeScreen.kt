@@ -53,10 +53,11 @@ fun HomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Auto-logout when account is deactivated by admin
-    LaunchedEffect(uiState.sessionExpired) {
-        if (uiState.sessionExpired) {
-            navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                HomeEvent.SessionExpired -> navController.navigate("role_select") { popUpTo(0) { inclusive = true } }
+            }
         }
     }
 

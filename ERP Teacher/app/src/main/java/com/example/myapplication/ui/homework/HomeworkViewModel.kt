@@ -10,6 +10,8 @@ import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.HomeworkItem
 import com.example.myapplication.data.model.SubjectItem
 import com.example.myapplication.data.remote.RetrofitClient
+import com.example.myapplication.data.repository.HomeworkRepository
+import com.example.myapplication.data.util.NetworkResult
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,20 +23,21 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 data class HomeworkUiState(
-    val isLoading:        Boolean             = true,
-    val homeworkList:     List<HomeworkItem>  = emptyList(),
-    val classes:          List<ClassData>     = emptyList(),
-    val subjects:         List<SubjectItem>   = emptyList(),
-    val error:            String?             = null,
-    val showAddDialog:    Boolean             = false,
-    val isSubmitting:     Boolean             = false,
-    val addError:         String?             = null,
-    val selectedFileUris: List<Uri>           = emptyList()
+    val isLoading:        Boolean            = true,
+    val homeworkList:     List<HomeworkItem> = emptyList(),
+    val classes:          List<ClassData>    = emptyList(),
+    val subjects:         List<SubjectItem>  = emptyList(),
+    val error:            String?            = null,
+    val showAddDialog:    Boolean            = false,
+    val isSubmitting:     Boolean            = false,
+    val addError:         String?            = null,
+    val selectedFileUris: List<Uri>          = emptyList()
 )
 
 class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefManager = PreferenceManager(app)
+    private val repository  = HomeworkRepository(RetrofitClient.api)
 
     private val _uiState = MutableStateFlow(HomeworkUiState())
     val uiState: StateFlow<HomeworkUiState> = _uiState.asStateFlow()
@@ -48,17 +51,18 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val (hw, classResp, subjectResp) = coroutineScope {
-                    val hwD      = async { RetrofitClient.api.getHomework("Bearer $token") }
-                    val classD   = async { RetrofitClient.api.getSchoolClasses("Bearer $token") }
-                    val subjectD = async { RetrofitClient.api.getSubjects("Bearer $token") }
-                    Triple(hwD.await(), classD.await(), subjectD.await())
+                val (hwResult, classResult, subjectResult) = coroutineScope {
+                    Triple(
+                        async { repository.getHomework(token) }.await(),
+                        async { repository.getSchoolClasses(token) }.await(),
+                        async { repository.getSubjects(token) }.await()
+                    )
                 }
                 _uiState.value = HomeworkUiState(
                     isLoading    = false,
-                    homeworkList = if (hw.isSuccessful) hw.body() ?: emptyList() else emptyList(),
-                    classes      = if (classResp.isSuccessful) classResp.body() ?: emptyList() else emptyList(),
-                    subjects     = if (subjectResp.isSuccessful) subjectResp.body() ?: emptyList() else emptyList(),
+                    homeworkList = if (hwResult is NetworkResult.Success) hwResult.data else emptyList(),
+                    classes      = if (classResult is NetworkResult.Success) classResult.data else emptyList(),
+                    subjects     = if (subjectResult is NetworkResult.Success) subjectResult.data else emptyList()
                 )
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = "Cannot connect to server")
@@ -70,8 +74,9 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
     fun closeAddDialog() { _uiState.value = _uiState.value.copy(showAddDialog = false, addError = null, selectedFileUris = emptyList()) }
 
     fun addFiles(uris: List<Uri>) {
-        val combined = (_uiState.value.selectedFileUris + uris).take(5)
-        _uiState.value = _uiState.value.copy(selectedFileUris = combined)
+        _uiState.value = _uiState.value.copy(
+            selectedFileUris = (_uiState.value.selectedFileUris + uris).take(5)
+        )
     }
 
     fun removeFile(uri: Uri) {
@@ -88,27 +93,26 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, addError = null)
-            try {
-                val plain     = "text/plain".toMediaType()
-                val fileParts = _uiState.value.selectedFileUris.mapNotNull { uriToMultipartPart(uri = it) }
-
-                val response = RetrofitClient.api.addHomework(
-                    bearerToken = "Bearer $token",
-                    classId     = classId.trim().toRequestBody(plain),
-                    title       = title.trim().toRequestBody(plain),
-                    description = description.trim().toRequestBody(plain),
-                    subject     = subject.trim().toRequestBody(plain),
-                    dueDate     = dueDate.trim().toRequestBody(plain),
-                    files       = fileParts
-                )
-                if (response.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(isSubmitting = false, showAddDialog = false, selectedFileUris = emptyList())
+            val plain     = "text/plain".toMediaType()
+            val fileParts = _uiState.value.selectedFileUris.mapNotNull { uriToMultipartPart(it) }
+            when (repository.addHomework(
+                token,
+                classId.trim().toRequestBody(plain),
+                title.trim().toRequestBody(plain),
+                description.trim().toRequestBody(plain),
+                subject.trim().toRequestBody(plain),
+                dueDate.trim().toRequestBody(plain),
+                fileParts
+            )) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmitting = false, showAddDialog = false, selectedFileUris = emptyList()
+                    )
                     load()
-                } else {
-                    _uiState.value = _uiState.value.copy(isSubmitting = false, addError = "Failed to add homework")
                 }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, addError = "Cannot connect to server")
+                else -> _uiState.value = _uiState.value.copy(
+                    isSubmitting = false, addError = "Failed to add homework"
+                )
             }
         }
     }
@@ -116,17 +120,11 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteHomework(id: String) {
         val token = prefManager.getToken() ?: return
         viewModelScope.launch {
-            try {
-                val response = RetrofitClient.api.deleteHomework("Bearer $token", id)
-                if (response.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(
-                        homeworkList = _uiState.value.homeworkList.filter { it.id != id }
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(error = "Failed to delete homework")
-                }
-            } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Cannot connect to server")
+            when (repository.deleteHomework(token, id)) {
+                is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
+                    homeworkList = _uiState.value.homeworkList.filter { it.id != id }
+                )
+                else -> _uiState.value = _uiState.value.copy(error = "Failed to delete homework")
             }
         }
     }
@@ -136,8 +134,7 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
             val context  = getApplication<Application>()
             val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
             val bytes    = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
-            val fileName = getFileName(uri)
-            MultipartBody.Part.createFormData("files", fileName, bytes.toRequestBody(mimeType.toMediaType()))
+            MultipartBody.Part.createFormData("files", getFileName(uri), bytes.toRequestBody(mimeType.toMediaType()))
         } catch (_: Exception) { null }
     }
 
