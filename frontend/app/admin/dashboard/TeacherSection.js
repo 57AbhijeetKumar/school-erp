@@ -102,7 +102,8 @@ export default function TeacherSection({ teachers, subjects = [] }) {
                 required
                 placeholder="9999999999"
                 maxLength={10}
-                pattern="\d{10}"
+                pattern="[6-9]\d{9}"
+                title="10-digit mobile starting with 6, 7, 8 or 9"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -168,6 +169,7 @@ export default function TeacherSection({ teachers, subjects = [] }) {
           <p className="text-slate-500 text-sm">No teachers match &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
+        <>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -270,6 +272,7 @@ export default function TeacherSection({ teachers, subjects = [] }) {
             </div>
           </div>
         )}
+        </>
       )}
     </div>
   )

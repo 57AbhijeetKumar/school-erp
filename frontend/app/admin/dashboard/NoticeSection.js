@@ -127,7 +127,7 @@ export default function NoticeSection() {
                 {isSubmitting ? 'Publishing…' : 'Publish Notice'}
               </button>
               <button
-                type="button" onClick={() => setShowForm(false)}
+                type="button" onClick={() => { setShowForm(false); setContent('') }}
                 className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 Cancel

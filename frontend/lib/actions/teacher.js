@@ -14,7 +14,7 @@ export async function addTeacher(_prevState, formData) {
   const email   = formData.get('email')?.trim()   || undefined
 
   if (!name || !mobile) return { error: 'Name and mobile number are required' }
-  if (!/^\d{10}$/.test(mobile)) return { error: 'Enter a valid 10-digit mobile number' }
+  if (!/^[6-9]\d{9}$/.test(mobile)) return { error: 'Enter a valid 10-digit mobile number starting with 6–9' }
 
   try {
     const res = await fetch(`${process.env.BACKEND_URL}/api/teachers`, {
