@@ -181,17 +181,19 @@ function ComplaintCard({ complaint, onAcknowledge, onResolve, onDelete, isPendin
 
 export default function ComplaintSection() {
   const [complaints,   setComplaints]   = useState([])
+  const [loading,      setLoading]      = useState(true)
   const [status,       setStatus]       = useState('')
   const [severity,     setSeverity]     = useState('')
   const [raisedByRole, setRaisedByRole] = useState('')
   const [isPending,    startTransition] = useTransition()
 
   useEffect(() => {
+    setLoading(true)
     fetchComplaints(
       status      || undefined,
       severity    || undefined,
       raisedByRole || undefined,
-    ).then(setComplaints)
+    ).then(data => { setComplaints(data); setLoading(false) })
   }, [status, severity, raisedByRole])
 
   function reload() {
@@ -284,7 +286,11 @@ export default function ComplaintSection() {
       </div>
 
       {/* List */}
-      {complaints.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
+          <p className="text-slate-400 text-sm">Loading complaints…</p>
+        </div>
+      ) : complaints.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
           <span className="text-5xl mb-4">⚠️</span>
           <p className="text-slate-600 font-medium">No complaints found</p>

@@ -21,7 +21,9 @@ function AudienceBadge({ audience }) {
 
 export default function NoticeSection() {
   const [notices,    setNotices]    = useState([])
+  const [loading,    setLoading]    = useState(true)
   const [showForm,   setShowForm]   = useState(false)
+  const [content,    setContent]    = useState('')
   const [deleting,   setDeleting]   = useState(null)
   const [editingId,  setEditingId]  = useState(null)
   const [editData,   setEditData]   = useState({ title: '', content: '', targetAudience: 'all' })
@@ -47,12 +49,13 @@ export default function NoticeSection() {
   }
 
   useEffect(() => {
-    fetchNotices().then(setNotices)
+    fetchNotices().then(data => { setNotices(data); setLoading(false) })
   }, [])
 
   useEffect(() => {
     if (state?.success) {
       setShowForm(false)
+      setContent('')
       fetchNotices().then(setNotices)
     }
   }, [state?.ts])
@@ -74,7 +77,7 @@ export default function NoticeSection() {
           <p className="text-sm text-slate-500 mt-0.5">Publish announcements to teachers and parents</p>
         </div>
         <button
-          onClick={() => setShowForm(v => !v)}
+          onClick={() => { setShowForm(v => !v); if (showForm) setContent('') }}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
         >
           <span className="text-base">+</span> New Notice
@@ -99,9 +102,12 @@ export default function NoticeSection() {
               <textarea
                 name="content" required rows={4}
                 maxLength={5000}
+                value={content}
+                onChange={e => setContent(e.target.value)}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Write your notice here..."
               />
+              <p className="text-xs text-slate-400 text-right mt-0.5">{content.length} / 5000</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Audience</label>
@@ -131,7 +137,11 @@ export default function NoticeSection() {
         </div>
       )}
 
-      {notices.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
+          <p className="text-slate-400 text-sm">Loading notices…</p>
+        </div>
+      ) : notices.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
           <span className="text-5xl mb-4">📢</span>
           <p className="text-slate-600 font-medium">No notices yet</p>

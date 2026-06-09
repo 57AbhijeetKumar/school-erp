@@ -3,16 +3,33 @@
 import { useActionState, useEffect, useState } from 'react'
 import { addTeacher, toggleTeacherStatus, removeTeacher } from '@/lib/actions/teacher'
 
+const PAGE_SIZE = 10
+
 export default function TeacherSection({ teachers, subjects = [] }) {
   const [showForm,   setShowForm]   = useState(false)
   const [formKey,    setFormKey]    = useState(0)
   const [deletingId, setDeletingId] = useState(null)
+  const [search,     setSearch]     = useState('')
+  const [page,       setPage]       = useState(1)
   const [state, action, pending]    = useActionState(addTeacher, null)
+
+  const filtered = teachers.filter(t => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return t.name?.toLowerCase().includes(q) ||
+           t.mobile?.includes(q) ||
+           t.subject?.toLowerCase().includes(q) ||
+           t.email?.toLowerCase().includes(q)
+  })
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage   = Math.min(page, totalPages)
+  const paged      = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   useEffect(() => {
     if (state?.success) {
       setShowForm(false)
       setFormKey(k => k + 1)
+      setPage(1)
     }
   }, [state?.success])
 
@@ -20,7 +37,7 @@ export default function TeacherSection({ teachers, subjects = [] }) {
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">👩‍🏫</span>
           <h2 className="font-semibold text-slate-800">Teachers</h2>
@@ -38,6 +55,19 @@ export default function TeacherSection({ teachers, subjects = [] }) {
           {showForm ? 'Cancel' : 'Add Teacher'}
         </button>
       </div>
+
+      {/* Search */}
+      {teachers.length > 0 && (
+        <div className="px-6 py-3 border-b border-slate-100">
+          <input
+            type="search"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Search by name, mobile, subject or email…"
+            className="w-full sm:w-72 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      )}
 
       {/* Add Teacher Form */}
       {showForm && (
@@ -97,6 +127,19 @@ export default function TeacherSection({ teachers, subjects = [] }) {
             </div>
           </div>
 
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Email <span className="text-slate-400">(optional)</span>
+            </label>
+            <input
+              name="email"
+              type="email"
+              maxLength={200}
+              placeholder="teacher@school.com"
+              className="w-full sm:w-72 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
           <div className="flex items-center justify-between mt-4">
             <p className="text-xs text-slate-500">
               🔑 Default login password: <span className="font-semibold text-slate-700">123456</span>
@@ -120,6 +163,10 @@ export default function TeacherSection({ teachers, subjects = [] }) {
           <p className="text-slate-500 text-sm">No teachers added yet</p>
           <p className="text-slate-400 text-xs mt-1">Click &ldquo;Add Teacher&rdquo; to get started</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center">
+          <p className="text-slate-500 text-sm">No teachers match &ldquo;{search}&rdquo;</p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -129,19 +176,21 @@ export default function TeacherSection({ teachers, subjects = [] }) {
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Mobile (Login ID)</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Subject</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Email</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {teachers.map((t, i) => (
+              {paged.map((t, i) => (
                 <tr key={t._id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-3 text-slate-400">{i + 1}</td>
+                  <td className="px-6 py-3 text-slate-400">{(safePage - 1) * PAGE_SIZE + i + 1}</td>
                   <td className="px-6 py-3 font-medium text-slate-800">{t.name}</td>
                   <td className="px-6 py-3">
                     <span className="font-mono text-slate-700">{t.mobile}</span>
                   </td>
                   <td className="px-6 py-3 text-slate-600">{t.subject || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-6 py-3 text-slate-500 text-xs hidden md:table-cell">{t.email || <span className="text-slate-300">—</span>}</td>
                   <td className="px-6 py-3">
                     {t.isActive !== false ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-full">
@@ -198,6 +247,29 @@ export default function TeacherSection({ teachers, subjects = [] }) {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              {filtered.length} teacher{filtered.length !== 1 ? 's' : ''} · page {safePage} of {totalPages}
+            </p>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       )}
     </div>
   )

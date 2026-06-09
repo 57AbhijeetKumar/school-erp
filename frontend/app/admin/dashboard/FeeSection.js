@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { fetchClassFees, markStudentFee, markBulkFee } from '@/lib/actions/fee'
 
 function currentMonth() {
@@ -34,7 +34,7 @@ export default function FeeSection({ classes }) {
   const [saving,        startSave]        = useTransition()
   const [amountInput,   setAmountInput]   = useState('')
 
-  async function load() {
+  useEffect(() => {
     if (!selectedClass) return
     setData(null); setError(null)
     startLoad(async () => {
@@ -42,7 +42,7 @@ export default function FeeSection({ classes }) {
       if (result) setData(result)
       else setError('Failed to load fee data.')
     })
-  }
+  }, [selectedClass, month])
 
   async function markOne(studentId, status) {
     if (status === 'paid' && (!amountInput || Number(amountInput) <= 0)) {
@@ -116,18 +116,10 @@ export default function FeeSection({ classes }) {
             min="0"
             placeholder="0"
             value={amountInput}
-            onChange={e => setAmountInput(e.target.value)}
+            onChange={e => { const v = e.target.value; if (v === '' || Number(v) >= 0) setAmountInput(v) }}
             className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
-
-        <button
-          onClick={load}
-          disabled={loading}
-          className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg font-medium transition-colors"
-        >
-          {loading ? 'Loading…' : 'Load'}
-        </button>
       </div>
 
       {/* Content */}
@@ -136,7 +128,7 @@ export default function FeeSection({ classes }) {
       )}
 
       {!data && !error && !loading && (
-        <p className="text-sm text-slate-400 text-center py-8">Select a class and month, then click Load.</p>
+        <p className="text-sm text-slate-400 text-center py-8">Select a class to view fees.</p>
       )}
 
       {loading && (

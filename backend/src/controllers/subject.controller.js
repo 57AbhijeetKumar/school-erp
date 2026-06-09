@@ -1,4 +1,5 @@
 const Subject = require('../models/Subject');
+const { stripHtml } = require('../utils/sanitize');
 
 // ── Admin: list all subjects for this school ──────────────────────────────────
 const getSubjects = async (req, res) => {
@@ -16,16 +17,18 @@ const getSubjects = async (req, res) => {
 const createSubject = async (req, res) => {
   try {
     const { name, code } = req.body;
-    if (!name?.trim()) return res.status(400).json({ message: 'Subject name is required' });
-    if (name.trim().length > 100) return res.status(400).json({ message: 'Subject name cannot exceed 100 characters' });
-    if (code?.trim().length > 20) return res.status(400).json({ message: 'Subject code cannot exceed 20 characters' });
+    const cleanName = stripHtml(name?.trim());
+    const cleanCode = stripHtml(code?.trim());
+    if (!cleanName) return res.status(400).json({ message: 'Subject name is required' });
+    if (cleanName.length > 100) return res.status(400).json({ message: 'Subject name cannot exceed 100 characters' });
+    if (cleanCode?.length > 20) return res.status(400).json({ message: 'Subject code cannot exceed 20 characters' });
 
-    const exists = await Subject.findOne({ school: req.user.school, name: new RegExp(`^${name.trim()}$`, 'i') });
-    if (exists) return res.status(409).json({ message: `Subject "${name.trim()}" already exists` });
+    const exists = await Subject.findOne({ school: req.user.school, name: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    if (exists) return res.status(409).json({ message: `Subject "${cleanName}" already exists` });
 
     const subject = await Subject.create({
-      name:   name.trim(),
-      code:   code?.trim() || undefined,
+      name:   cleanName,
+      code:   cleanCode || undefined,
       school: req.user.school,
     });
 
@@ -39,11 +42,13 @@ const createSubject = async (req, res) => {
 const updateSubject = async (req, res) => {
   try {
     const { name, code } = req.body;
-    if (!name?.trim()) return res.status(400).json({ message: 'Subject name is required' });
+    const cleanName = stripHtml(name?.trim());
+    const cleanCode = stripHtml(code?.trim());
+    if (!cleanName) return res.status(400).json({ message: 'Subject name is required' });
 
     const subject = await Subject.findOneAndUpdate(
       { _id: req.params.id, school: req.user.school },
-      { name: name.trim(), code: code?.trim() || undefined },
+      { name: cleanName, code: cleanCode || undefined },
       { new: true }
     );
     if (!subject) return res.status(404).json({ message: 'Subject not found' });

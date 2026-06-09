@@ -11,6 +11,9 @@ const getClassFees = async (req, res) => {
     if (!classId || !month) {
       return res.status(400).json({ message: 'classId and month are required' });
     }
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ message: 'month must be in YYYY-MM format (e.g. 2026-06)' });
+    }
 
     const cls = await Class.findOne({ _id: classId, school: schoolId });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
@@ -76,6 +79,9 @@ const markFee = async (req, res) => {
     if (!studentId || !month || !status) {
       return res.status(400).json({ message: 'studentId, month and status are required' });
     }
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ message: 'month must be in YYYY-MM format (e.g. 2026-06)' });
+    }
     if (!['paid', 'due'].includes(status)) {
       return res.status(400).json({ message: 'status must be "paid" or "due"' });
     }
@@ -119,6 +125,9 @@ const markBulkFee = async (req, res) => {
 
     if (!classId || !month || !status) {
       return res.status(400).json({ message: 'classId, month and status are required' });
+    }
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ message: 'month must be in YYYY-MM format (e.g. 2026-06)' });
     }
     if (!['paid', 'due'].includes(status)) {
       return res.status(400).json({ message: 'status must be "paid" or "due"' });

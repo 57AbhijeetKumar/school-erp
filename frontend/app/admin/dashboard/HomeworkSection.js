@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { fetchClassHomework, fetchHomeworkSubmissions, adminDeleteHomework } from '@/lib/actions/homework'
+import { fetchClassHomework, fetchHomeworkSubmissions, adminDeleteHomework, adminCreateHomework } from '@/lib/actions/homework'
 
 const STATUS = {
   submitted:     { label: 'Submitted',     cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
@@ -215,10 +215,16 @@ function HomeworkRow({ hw, onDelete }) {
   )
 }
 
+const EMPTY_HW = { title: '', description: '', subject: '', dueDate: '' }
+
 export default function HomeworkSection({ classes }) {
   const [classId,   setClassId]   = useState(classes[0]?._id ?? '')
   const [homework,  setHomework]  = useState(null)
   const [isPending, startTransition] = useTransition()
+  const [showCreate, setShowCreate] = useState(false)
+  const [newHw,      setNewHw]      = useState(EMPTY_HW)
+  const [createErr,  setCreateErr]  = useState('')
+  const [creating,   setCreating]   = useState(false)
 
   function load() {
     if (!classId) return
@@ -226,6 +232,25 @@ export default function HomeworkSection({ classes }) {
       const data = await fetchClassHomework(classId)
       setHomework(data)
     })
+  }
+
+  async function handleCreate() {
+    if (!newHw.title.trim() || !newHw.description.trim()) {
+      setCreateErr('Title and description are required')
+      return
+    }
+    setCreating(true)
+    setCreateErr('')
+    const result = await adminCreateHomework({ classId, ...newHw })
+    setCreating(false)
+    if (result?.error) {
+      setCreateErr(result.error)
+    } else {
+      setShowCreate(false)
+      setNewHw(EMPTY_HW)
+      const data = await fetchClassHomework(classId)
+      setHomework(Array.isArray(data) ? data : [])
+    }
   }
 
   const selectedClass = classes.find(c => c._id === classId)
@@ -241,13 +266,13 @@ export default function HomeworkSection({ classes }) {
         </div>
       </div>
 
-      {/* Class picker */}
-      <div className="flex flex-wrap gap-3 mb-5">
+      {/* Class picker + actions */}
+      <div className="flex flex-wrap gap-3 mb-5 items-end">
         <div className="flex flex-col gap-0.5">
           <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">Select Class</label>
           <select
             value={classId}
-            onChange={e => { setClassId(e.target.value); setHomework(null) }}
+            onChange={e => { setClassId(e.target.value); setHomework(null); setShowCreate(false) }}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
           >
             {classes.map(cls => (
@@ -255,15 +280,66 @@ export default function HomeworkSection({ classes }) {
             ))}
           </select>
         </div>
-        <div className="flex items-end">
-          <button
-            onClick={load} disabled={isPending || !classId}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-          >
-            {isPending ? 'Loading…' : 'View Homework'}
-          </button>
-        </div>
+        <button
+          onClick={load} disabled={isPending || !classId}
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+        >
+          {isPending ? 'Loading…' : 'View Homework'}
+        </button>
+        <button
+          onClick={() => { setShowCreate(v => !v); setCreateErr('') }}
+          disabled={!classId}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+        >
+          {showCreate ? 'Cancel' : '+ Create'}
+        </button>
       </div>
+
+      {/* Create Homework Form */}
+      {showCreate && (
+        <div className="mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+          <p className="text-sm font-semibold text-slate-700 mb-3">New Homework Assignment</p>
+          {createErr && <p className="text-red-600 text-sm mb-3">{createErr}</p>}
+          <div className="space-y-3">
+            <input
+              type="text" maxLength={200} required
+              value={newHw.title}
+              onChange={e => setNewHw(h => ({ ...h, title: e.target.value }))}
+              placeholder="Title *"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <textarea
+              rows={3} maxLength={2000} required
+              value={newHw.description}
+              onChange={e => setNewHw(h => ({ ...h, description: e.target.value }))}
+              placeholder="Description / Instructions *"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text" maxLength={100}
+                value={newHw.subject}
+                onChange={e => setNewHw(h => ({ ...h, subject: e.target.value }))}
+                placeholder="Subject (optional)"
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <input
+                type="date"
+                value={newHw.dueDate}
+                onChange={e => setNewHw(h => ({ ...h, dueDate: e.target.value }))}
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <p className="text-xs text-slate-500">Homework will be attributed to this class&rsquo;s class teacher.</p>
+            <button
+              type="button" onClick={handleCreate} disabled={creating}
+              className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {creating ? 'Creating…' : 'Create Homework'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!homework && !isPending && (
         <div className="text-center py-10">

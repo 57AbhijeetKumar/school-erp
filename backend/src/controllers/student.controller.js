@@ -4,18 +4,22 @@ const Attendance         = require('../models/Attendance');
 const ExamResult         = require('../models/ExamResult');
 const HomeworkSubmission = require('../models/HomeworkSubmission');
 const Fee                = require('../models/Fee');
+const { stripHtml }      = require('../utils/sanitize');
 
 const addStudent = async (req, res) => {
   try {
     const { name, rollNumber, parentName, parentMobile, dob, classId, admissionSession } = req.body;
     const schoolId  = req.user.school;
-    const roll      = rollNumber?.trim() || undefined;
+    const roll      = stripHtml(rollNumber?.trim()) || undefined;
 
     if (!name || !classId) {
       return res.status(400).json({ message: 'Student name and classId are required' });
     }
-    if (name.trim().length > 100) return res.status(400).json({ message: 'Student name cannot exceed 100 characters' });
-    if (parentName?.trim().length > 100) return res.status(400).json({ message: 'Parent name cannot exceed 100 characters' });
+    const cleanName       = stripHtml(name.trim());
+    const cleanParentName = stripHtml(parentName?.trim());
+    const cleanSession    = stripHtml(admissionSession?.trim());
+    if (cleanName.length > 100) return res.status(400).json({ message: 'Student name cannot exceed 100 characters' });
+    if (cleanParentName?.length > 100) return res.status(400).json({ message: 'Parent name cannot exceed 100 characters' });
     if (dob && new Date(dob) > new Date()) {
       return res.status(400).json({ message: 'Date of birth cannot be in the future' });
     }
@@ -34,18 +38,16 @@ const addStudent = async (req, res) => {
       }
     }
 
-    const session = admissionSession?.trim() || undefined;
-
     const student = await Student.create({
-      name:             name.trim(),
+      name:             cleanName,
       rollNumber:       roll,
-      parentName:       parentName?.trim()   || undefined,
+      parentName:       cleanParentName   || undefined,
       parentMobile:     parentMobile?.trim() || undefined,
       dob:              dob                  || undefined,
       enrolledClass:    classId,
       school:           schoolId,
-      admissionSession: session,
-      currentSession:   session,
+      admissionSession: cleanSession || undefined,
+      currentSession:   cleanSession || undefined,
     });
 
     res.status(201).json({ message: 'Student added', student });
@@ -75,10 +77,11 @@ const getStudentsByClass = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const { name, rollNumber, parentName, parentMobile, dob, classId } = req.body;
-    const schoolId = req.user.school;
-    const roll     = rollNumber?.trim() || null;
+    const schoolId  = req.user.school;
+    const cleanName = stripHtml(name?.trim());
+    const roll      = stripHtml(rollNumber?.trim()) || null;
 
-    if (!name?.trim()) return res.status(400).json({ message: 'Student name is required' });
+    if (!cleanName) return res.status(400).json({ message: 'Student name is required' });
 
     if (parentMobile && !/^\d{10}$/.test(parentMobile.trim())) {
       return res.status(400).json({ message: 'Parent mobile must be 10 digits' });
@@ -115,10 +118,10 @@ const updateStudent = async (req, res) => {
     }
 
     const updateFields = {
-      name:         name.trim(),
+      name:         cleanName,
       rollNumber:   roll,
-      parentName:   parentName?.trim()   || null,
-      parentMobile: parentMobile?.trim() || null,
+      parentName:   stripHtml(parentName?.trim()) || null,
+      parentMobile: parentMobile?.trim()          || null,
       dob:          dob || null,
     };
     if (classId) updateFields.enrolledClass = classId;

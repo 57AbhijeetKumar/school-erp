@@ -1,6 +1,7 @@
 const Teacher  = require('../models/Teacher');
 const Class    = require('../models/Class');
 const Homework = require('../models/Homework');
+const { stripHtml } = require('../utils/sanitize');
 
 const createTeacher = async (req, res) => {
   try {
@@ -10,26 +11,35 @@ const createTeacher = async (req, res) => {
     if (!name || !mobile) {
       return res.status(400).json({ message: 'Name and mobile number are required' });
     }
-    if (name.trim().length > 100) return res.status(400).json({ message: 'Teacher name cannot exceed 100 characters' });
+    if (!/^[6-9]\d{9}$/.test(mobile.trim())) {
+      return res.status(400).json({ message: 'Mobile must be a valid 10-digit number starting with 6–9' });
+    }
+    const cleanName = stripHtml(name.trim());
+    if (cleanName.length > 100) return res.status(400).json({ message: 'Teacher name cannot exceed 100 characters' });
 
     const exists = await Teacher.findOne({ mobile });
     if (exists) {
       return res.status(409).json({ message: 'Mobile number already registered to another teacher' });
     }
 
-    const teacher = await Teacher.create({ name, mobile, subject, email, password: '123456', school: schoolId });
+    const teacher = await Teacher.create({
+      name:     cleanName,
+      mobile:   mobile.trim(),
+      subject:  stripHtml(subject?.trim()) || undefined,
+      email:    stripHtml(email?.trim())   || undefined,
+      password: '123456',
+      school:   schoolId,
+    });
 
     res.status(201).json({
       message: 'Teacher added successfully',
       teacher: {
-        id:              teacher._id,
-        name:            teacher.name,
-        mobile:          teacher.mobile,
-        subject:         teacher.subject || null,
-        email:           teacher.email   || null,
-        isActive:        teacher.isActive,
-        defaultPassword: '123456',
-        loginInfo:       `Mobile: ${teacher.mobile} | Password: 123456`,
+        id:       teacher._id,
+        name:     teacher.name,
+        mobile:   teacher.mobile,
+        subject:  teacher.subject || null,
+        email:    teacher.email   || null,
+        isActive: teacher.isActive,
       },
     });
   } catch (err) {

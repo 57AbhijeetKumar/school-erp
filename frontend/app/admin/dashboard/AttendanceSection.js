@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { fetchClassAttendance, markAdminAttendance } from '@/lib/actions/attendance'
 
 const STATUS_STYLE = {
@@ -12,6 +12,13 @@ const STATUS_STYLE = {
 
 function todayString() {
   return new Date().toISOString().split('T')[0]
+}
+
+function shiftDate(from, delta) {
+  const [y, m, d] = from.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + delta)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
 
 export default function AttendanceSection({ classes }) {
@@ -28,7 +35,7 @@ export default function AttendanceSection({ classes }) {
   const selectedClass = classes.find(c => String(c._id) === String(classId))
   const hasClassTeacher = !!selectedClass?.classTeacher
 
-  function load() {
+  useEffect(() => {
     if (!classId) return
     setEditMode(false)
     setSaveMsg('')
@@ -37,6 +44,14 @@ export default function AttendanceSection({ classes }) {
       const data = await fetchClassAttendance(classId, date)
       setAttendance(data)
     })
+  }, [classId, date])
+
+  function changeDate(newDate) {
+    setDate(newDate)
+    setAttendance(null)
+    setEditMode(false)
+    setSaveMsg('')
+    setSaveError('')
   }
 
   function enterEditMode() {
@@ -92,21 +107,33 @@ export default function AttendanceSection({ classes }) {
           ))}
         </select>
 
-        <input
-          type="date"
-          value={date}
-          max={todayString()}
-          onChange={e => { setDate(e.target.value); setAttendance(null); setEditMode(false); setSaveMsg(''); setSaveError('') }}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-        />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => changeDate(shiftDate(date, -1))}
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="Previous day"
+          >
+            ‹
+          </button>
+          <input
+            type="date"
+            value={date}
+            max={todayString()}
+            onChange={e => changeDate(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+          <button
+            type="button"
+            onClick={() => changeDate(shiftDate(date, 1))}
+            disabled={date >= todayString()}
+            className="p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+            aria-label="Next day"
+          >
+            ›
+          </button>
+        </div>
 
-        <button
-          onClick={load}
-          disabled={isPending || !classId}
-          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-        >
-          {isPending ? 'Loading…' : 'View'}
-        </button>
       </div>
 
       {/* No class teacher warning */}
@@ -126,7 +153,7 @@ export default function AttendanceSection({ classes }) {
 
       {!attendance && !isPending && (
         <p className="text-sm text-slate-400 text-center py-8">
-          Select a class and date, then click View
+          Select a class to view attendance.
         </p>
       )}
 

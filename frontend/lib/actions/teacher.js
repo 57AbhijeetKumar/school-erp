@@ -11,6 +11,7 @@ export async function addTeacher(_prevState, formData) {
   const name    = formData.get('name')?.trim()
   const mobile  = formData.get('mobile')?.trim()
   const subject = formData.get('subject')?.trim() || undefined
+  const email   = formData.get('email')?.trim()   || undefined
 
   if (!name || !mobile) return { error: 'Name and mobile number are required' }
   if (!/^\d{10}$/.test(mobile)) return { error: 'Enter a valid 10-digit mobile number' }
@@ -19,7 +20,7 @@ export async function addTeacher(_prevState, formData) {
     const res = await fetch(`${process.env.BACKEND_URL}/api/teachers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name, mobile, subject }),
+      body: JSON.stringify({ name, mobile, subject, email }),
     })
     const data = await res.json()
     if (!res.ok) return { error: data.message || 'Failed to add teacher' }

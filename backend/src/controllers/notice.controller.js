@@ -1,19 +1,22 @@
 const Notice  = require('../models/Notice');
 const Student = require('../models/Student');
+const { stripHtml } = require('../utils/sanitize');
 
 // POST /api/notices  (admin)
 const createNotice = async (req, res) => {
   try {
     const { title, content, targetAudience } = req.body;
-    if (!title?.trim() || !content?.trim()) {
+    const cleanTitle   = stripHtml(title?.trim());
+    const cleanContent = stripHtml(content?.trim());
+    if (!cleanTitle || !cleanContent) {
       return res.status(400).json({ message: 'title and content are required' });
     }
-    if (title.trim().length > 200)   return res.status(400).json({ message: 'Title cannot exceed 200 characters' });
-    if (content.trim().length > 5000) return res.status(400).json({ message: 'Content cannot exceed 5000 characters' });
+    if (cleanTitle.length > 200)   return res.status(400).json({ message: 'Title cannot exceed 200 characters' });
+    if (cleanContent.length > 5000) return res.status(400).json({ message: 'Content cannot exceed 5000 characters' });
     const notice = await Notice.create({
       school:         req.user.school,
-      title:          title.trim(),
-      content:        content.trim(),
+      title:          cleanTitle,
+      content:        cleanContent,
       targetAudience: targetAudience || 'all',
       createdBy:      req.user.id,
     });
@@ -46,13 +49,15 @@ const getNotices = async (req, res) => {
 const updateNotice = async (req, res) => {
   try {
     const { title, content, targetAudience } = req.body;
-    if (!title?.trim() && !content?.trim()) {
+    const cleanTitle   = title   ? stripHtml(title.trim())   : null;
+    const cleanContent = content ? stripHtml(content.trim()) : null;
+    if (!cleanTitle && !cleanContent) {
       return res.status(400).json({ message: 'Nothing to update' });
     }
     const update = {};
-    if (title?.trim())          update.title          = title.trim();
-    if (content?.trim())        update.content        = content.trim();
-    if (targetAudience)         update.targetAudience = targetAudience;
+    if (cleanTitle)         update.title          = cleanTitle;
+    if (cleanContent)       update.content        = cleanContent;
+    if (targetAudience)     update.targetAudience = targetAudience;
 
     const notice = await Notice.findOneAndUpdate(
       { _id: req.params.id, school: req.user.school, isActive: true },
