@@ -1,6 +1,7 @@
 import { Geist } from 'next/font/google'
 import './globals.css'
 import ThemeProvider from '@/components/ThemeProvider'
+import ThemeToggle from '@/components/ThemeToggle'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
@@ -36,6 +37,10 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full bg-slate-50 antialiased">
         <ThemeProvider>
+          {/* Global theme toggle — fixed top-right, visible on every page */}
+          <div className="fixed top-3 right-4 z-[9999]">
+            <ThemeToggle />
+          </div>
           {children}
         </ThemeProvider>
       </body>
