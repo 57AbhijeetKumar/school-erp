@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { redirect, RedirectType } from 'next/navigation'
 
 export async function loginSuperAdmin(prevState, formData) {
   const email    = formData.get('email')?.trim()
@@ -30,7 +30,7 @@ export async function loginSuperAdmin(prevState, formData) {
     return { error: 'Cannot reach server. Is the backend running on port 8000?' }
   }
 
-  redirect(redirectTo)
+  redirect(redirectTo, RedirectType.replace)
 }
 
 export async function loginAdmin(prevState, formData) {
@@ -62,7 +62,7 @@ export async function loginAdmin(prevState, formData) {
     return { error: 'Cannot reach server. Is the backend running on port 8000?' }
   }
 
-  redirect(redirectTo)
+  redirect(redirectTo, RedirectType.replace)
 }
 
 export async function logout() {
