@@ -1,6 +1,37 @@
 @import "tailwindcss";
 
+/* ── Class-based dark mode (Tailwind v4) ────────────────────────────
+   Activates dark: utilities when .dark class is on <html> or any ancestor.
+   Toggle is controlled by ThemeProvider — not the OS media query.       */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Design tokens ──────────────────────────────────────────────────
+   Single source of truth for all colors. Mirrored in lib/theme/colors.js
+   for JS access. Use var(--token) in inline styles when needed.         */
 :root {
+  /* Backgrounds */
+  --bg-page:      #F8FAFC;   /* slate-50  — outermost page */
+  --bg-surface:   #FFFFFF;   /* white     — cards, sidebar, modals */
+  --bg-surface-2: #F1F5F9;   /* slate-100 — table heads, inner sections */
+  --bg-surface-3: #E2E8F0;   /* slate-200 — tags, chips, hover bg */
+
+  /* Borders */
+  --border:        #E2E8F0;  /* slate-200 */
+  --border-subtle: #F1F5F9;  /* slate-100 */
+  --border-strong: #CBD5E1;  /* slate-300 */
+
+  /* Text */
+  --text-primary:   #1E293B; /* slate-800 */
+  --text-secondary: #64748B; /* slate-500 */
+  --text-muted:     #94A3B8; /* slate-400 */
+
+  /* Brand — emerald */
+  --brand:        #059669;   /* emerald-600 */
+  --brand-hover:  #047857;   /* emerald-700 */
+  --brand-subtle: #ECFDF5;   /* emerald-50  */
+  --brand-text:   #065F46;   /* emerald-800 */
+
+  /* Legacy compat */
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -12,77 +43,114 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── Base styles ────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ── Dark mode ─────────────────────────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #080D1A;
-    --foreground: #E2E8F0;
-    color-scheme: dark;
-  }
+/* ── Dark mode tokens ───────────────────────────────────────────────── */
+.dark {
+  --bg-page:      #080D1A;
+  --bg-surface:   #0F172A;   /* slate-900 */
+  --bg-surface-2: #1E293B;   /* slate-800 */
+  --bg-surface-3: #334155;   /* slate-700 */
 
-  /* Panel / card backgrounds */
-  .bg-white     { background-color: #0F172A !important; }
-  .bg-slate-50  { background-color: #080D1A !important; }
-  .bg-slate-100 { background-color: #1E293B !important; }
-  .bg-slate-200 { background-color: #334155 !important; }
+  --border:        #334155;  /* slate-700 */
+  --border-subtle: #1E293B;  /* slate-800 */
+  --border-strong: #475569;  /* slate-600 */
 
-  /* Hover backgrounds */
-  .hover\:bg-slate-50:hover  { background-color: #1E293B !important; }
-  .hover\:bg-slate-100:hover { background-color: #334155 !important; }
-  .hover\:bg-slate-200:hover { background-color: #475569 !important; }
+  --text-primary:   #E2E8F0; /* slate-200 */
+  --text-secondary: #94A3B8; /* slate-400 */
+  --text-muted:     #64748B; /* slate-500 */
 
-  /* Status / accent tinted backgrounds — dark-adjusted */
-  .bg-emerald-50  { background-color: #052e16 !important; }
-  .bg-emerald-100 { background-color: #063321 !important; }
-  .bg-blue-50     { background-color: #0a1628 !important; }
-  .bg-blue-100    { background-color: #0a1e3d !important; }
-  .bg-amber-50    { background-color: #1c1000 !important; }
-  .bg-amber-100   { background-color: #271400 !important; }
-  .bg-red-50      { background-color: #1c0505 !important; }
-  .bg-red-100     { background-color: #240a0a !important; }
-  .bg-violet-50   { background-color: #150b2e !important; }
-  .bg-violet-100  { background-color: #1e1040 !important; }
+  --brand:        #10B981;   /* emerald-500 — brighter on dark bg */
+  --brand-hover:  #059669;   /* emerald-600 */
+  --brand-subtle: #052e16;   /* emerald-950 */
+  --brand-text:   #34D399;   /* emerald-400 */
 
-  /* Text */
-  .text-slate-900 { color: #F8FAFC !important; }
-  .text-slate-800 { color: #E2E8F0 !important; }
-  .text-slate-700 { color: #CBD5E1 !important; }
-  .text-slate-600 { color: #94A3B8 !important; }
-  .text-slate-500 { color: #64748B !important; }
-  .text-slate-400 { color: #475569 !important; }
-  .text-slate-300 { color: #334155 !important; }
-
-  /* Borders */
-  .border-slate-100 { border-color: #1E293B !important; }
-  .border-slate-200 { border-color: #334155 !important; }
-  .border-slate-300 { border-color: #475569 !important; }
-
-  /* Dividers */
-  .divide-slate-50  > :not([hidden]) ~ :not([hidden]) { border-color: #0F172A !important; }
-  .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1E293B !important; }
-  .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155 !important; }
-
-  /* Form controls */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
-  textarea,
-  select {
-    background-color: #1E293B !important;
-    color: #E2E8F0 !important;
-    border-color: #475569 !important;
-  }
-  input::placeholder,
-  textarea::placeholder { color: #64748B !important; }
-
-  /* Table hover row */
-  tbody tr:hover { background-color: #1E293B !important; }
-
-  /* Modal backdrop */
-  .bg-black\/40 { background-color: rgba(0, 0, 0, 0.7) !important; }
-  .bg-black\/30 { background-color: rgba(0, 0, 0, 0.6) !important; }
+  --background: #080D1A;
+  --foreground: #E2E8F0;
+  color-scheme: dark;
 }
+
+/* ── Dark mode Tailwind utility overrides ───────────────────────────
+   All components use standard Tailwind classes (bg-white, text-slate-800, etc.).
+   These rules remap those classes when .dark is active on <html>.
+   Grouped by category for maintainability.                              */
+
+/* — Panel / card backgrounds ——————————————————————————————————————— */
+.dark .bg-white     { background-color: #0F172A !important; }
+.dark .bg-slate-50  { background-color: #080D1A !important; }
+.dark .bg-slate-100 { background-color: #1E293B !important; }
+.dark .bg-slate-200 { background-color: #334155 !important; }
+
+/* — Hover backgrounds ————————————————————————————————————————————— */
+.dark .hover\:bg-slate-50:hover   { background-color: #1E293B !important; }
+.dark .hover\:bg-slate-100:hover  { background-color: #334155 !important; }
+.dark .hover\:bg-slate-200:hover  { background-color: #475569 !important; }
+.dark .hover\:bg-white:hover      { background-color: #1E293B !important; }
+
+/* — Status / accent tinted backgrounds ——————————————————————————— */
+.dark .bg-emerald-50  { background-color: #052e16 !important; }
+.dark .bg-emerald-100 { background-color: #063321 !important; }
+.dark .bg-blue-50     { background-color: #0a1628 !important; }
+.dark .bg-blue-100    { background-color: #0a1e3d !important; }
+.dark .bg-amber-50    { background-color: #1c1000 !important; }
+.dark .bg-amber-100   { background-color: #271400 !important; }
+.dark .bg-red-50      { background-color: #1c0505 !important; }
+.dark .bg-red-100     { background-color: #240a0a !important; }
+.dark .bg-violet-50   { background-color: #150b2e !important; }
+.dark .bg-violet-100  { background-color: #1e1040 !important; }
+.dark .bg-indigo-50   { background-color: #0f0e2e !important; }
+.dark .bg-indigo-100  { background-color: #1e1b4b !important; }
+
+/* — Accent hover states (status buttons) —————————————————————————— */
+.dark .hover\:bg-emerald-50:hover  { background-color: #063321 !important; }
+.dark .hover\:bg-emerald-100:hover { background-color: #064e3b !important; }
+.dark .hover\:bg-red-50:hover      { background-color: #240a0a !important; }
+.dark .hover\:bg-red-100:hover     { background-color: #3b0a0a !important; }
+.dark .hover\:bg-amber-50:hover    { background-color: #271400 !important; }
+.dark .hover\:bg-blue-50:hover     { background-color: #0a1e3d !important; }
+
+/* — Text ——————————————————————————————————————————————————————————— */
+.dark .text-slate-900 { color: #F8FAFC !important; }
+.dark .text-slate-800 { color: #E2E8F0 !important; }
+.dark .text-slate-700 { color: #CBD5E1 !important; }
+.dark .text-slate-600 { color: #94A3B8 !important; }
+.dark .text-slate-500 { color: #64748B !important; }
+.dark .text-slate-400 { color: #475569 !important; }
+.dark .text-slate-300 { color: #334155 !important; }
+
+/* — Borders ——————————————————————————————————————————————————————— */
+.dark .border-slate-100 { border-color: #1E293B !important; }
+.dark .border-slate-200 { border-color: #334155 !important; }
+.dark .border-slate-300 { border-color: #475569 !important; }
+.dark .border-slate-400 { border-color: #64748B !important; }
+
+/* — Dividers ——————————————————————————————————————————————————————— */
+.dark .divide-slate-50  > :not([hidden]) ~ :not([hidden]) { border-color: #0F172A !important; }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1E293B !important; }
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155 !important; }
+
+/* — Form controls ————————————————————————————————————————————————— */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.dark textarea,
+.dark select {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+  border-color: #475569 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748B !important; }
+
+/* — Table ————————————————————————————————————————————————————————— */
+.dark tbody tr:hover { background-color: #1E293B !important; }
+
+/* — Modals / overlays ————————————————————————————————————————————— */
+.dark .bg-black\/40 { background-color: rgba(0, 0, 0, 0.75) !important; }
+.dark .bg-black\/30 { background-color: rgba(0, 0, 0, 0.65) !important; }
+
+/* — Ring / focus ——————————————————————————————————————————————————— */
+.dark .ring-slate-200 { --tw-ring-color: #334155 !important; }

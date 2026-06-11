@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { logout } from '@/lib/actions/auth'
+import ThemeToggle from '@/components/ThemeToggle'
 import SchoolsTab          from './SchoolsTab'
 import RechargeRequestsTab from './RechargeRequestsTab'
 import AnalyticsTab        from './AnalyticsTab'
@@ -31,17 +32,20 @@ export default function SuperAdminLayout({ schools, requests, analytics }) {
             <span className="font-bold text-slate-800">School ERP</span>
             <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-medium">Super Admin</span>
           </div>
-          <form action={logout}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1" />
-              </svg>
-              Logout
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <form action={logout}>
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1" />
+                </svg>
+                Logout
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
