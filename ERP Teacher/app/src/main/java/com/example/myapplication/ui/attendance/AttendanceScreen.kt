@@ -177,8 +177,24 @@ fun AttendanceScreen(
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
-                        TextButton(onClick = { viewModel.markAllPresent() }) {
+                        var showMarkAllConfirm by remember { mutableStateOf(false) }
+                        TextButton(onClick = { showMarkAllConfirm = true }) {
                             Text("Mark All Present", color = GreenPrimary, fontSize = 13.sp)
+                        }
+                        if (showMarkAllConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showMarkAllConfirm = false },
+                                title            = { Text("Mark All Present") },
+                                text             = { Text("Mark all ${uiState.records.size} students as present?") },
+                                confirmButton    = {
+                                    TextButton(onClick = { showMarkAllConfirm = false; viewModel.markAllPresent() }) {
+                                        Text("Mark All", color = GreenPrimary)
+                                    }
+                                },
+                                dismissButton    = {
+                                    TextButton(onClick = { showMarkAllConfirm = false }) { Text("Cancel") }
+                                }
+                            )
                         }
                     }
 

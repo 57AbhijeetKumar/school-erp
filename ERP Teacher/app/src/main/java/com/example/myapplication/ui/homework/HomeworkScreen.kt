@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,6 +115,7 @@ fun HomeworkScreen(
                     items(uiState.homeworkList, key = { it.id }) { hw ->
                         HomeworkCard(
                             item              = hw,
+                            onEdit            = if (hw.isMyHomework) ({ viewModel.openEditDialog(hw) }) else null,
                             onDelete          = if (hw.isMyHomework) ({ viewModel.deleteHomework(hw.id) }) else null,
                             onViewSubmissions = { navController.navigate("submission/${hw.id}") }
                         )
@@ -122,6 +124,19 @@ fun HomeworkScreen(
                 }
             }
         }
+    }
+
+    uiState.editingHomework?.let { hw ->
+        EditHomeworkDialog(
+            homework     = hw,
+            subjects     = uiState.subjects,
+            isSubmitting = uiState.isSubmitting,
+            error        = uiState.editError,
+            onDismiss    = { viewModel.closeEditDialog() },
+            onSubmit     = { title, description, subject, dueDate ->
+                viewModel.updateHomework(hw.id, title, description, subject, dueDate)
+            }
+        )
     }
 
     if (uiState.showAddDialog) {
@@ -146,6 +161,7 @@ fun HomeworkScreen(
 @Composable
 private fun HomeworkCard(
     item: HomeworkItem,
+    onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
     onViewSubmissions: () -> Unit
 ) {
@@ -210,6 +226,11 @@ private fun HomeworkCard(
                             if (!item.subject.isNullOrBlank()) Chip(item.subject)
                         }
                     }
+                    if (onEdit != null) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = GreenPrimary)
+                        }
+                    }
                     if (onDelete != null) {
                         var confirmDelete by remember { mutableStateOf(false) }
                         if (confirmDelete) {
@@ -231,7 +252,20 @@ private fun HomeworkCard(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("By ${item.assignedBy.name}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (!item.dueDate.isNullOrBlank()) {
-                        Text("Due: ${item.dueDate}", fontSize = 11.sp, color = GreenPrimary, fontWeight = FontWeight.Medium)
+                        val isOverdue = remember(item.dueDate) {
+                            try {
+                                val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                val due = fmt.parse(item.dueDate)
+                                val today = java.util.Calendar.getInstance().apply { set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0) }.time
+                                due != null && due.before(today)
+                            } catch (_: Exception) { false }
+                        }
+                        Text(
+                            text       = "Due: ${item.dueDate}",
+                            fontSize   = 11.sp,
+                            color      = if (isOverdue) Color(0xFFDC2626) else GreenPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
@@ -476,6 +510,114 @@ private fun AddHomeworkDialog(
             }
         },
         dismissButton = { TextButton(onClick = { if (!isSubmitting) onDismiss() }) { Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant) } },
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditHomeworkDialog(
+    homework:     HomeworkItem,
+    subjects:     List<com.example.myapplication.data.model.SubjectItem>,
+    isSubmitting: Boolean,
+    error:        String?,
+    onDismiss:    () -> Unit,
+    onSubmit:     (title: String, description: String, subject: String, dueDate: String) -> Unit
+) {
+    var title           by remember { mutableStateOf(homework.title) }
+    var description     by remember { mutableStateOf(homework.description) }
+    var subject         by remember { mutableStateOf(homework.subject ?: "") }
+    var dueDate         by remember { mutableStateOf(homework.dueDate ?: "") }
+    var subjectExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
+        title  = { Text("Edit Homework", fontWeight = FontWeight.Bold, color = GreenDark) },
+        text   = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value         = title,
+                    onValueChange = { title = it },
+                    label         = { Text("Title *") },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(10.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary)
+                )
+                if (subjects.isNotEmpty()) {
+                    ExposedDropdownMenuBox(expanded = subjectExpanded, onExpandedChange = { subjectExpanded = !subjectExpanded }) {
+                        OutlinedTextField(
+                            value         = subject.ifBlank { "Select subject" },
+                            onValueChange = {},
+                            readOnly      = true,
+                            label         = { Text("Subject") },
+                            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(subjectExpanded) },
+                            modifier      = Modifier.menuAnchor().fillMaxWidth(),
+                            shape         = RoundedCornerShape(10.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary)
+                        )
+                        ExposedDropdownMenu(expanded = subjectExpanded, onDismissRequest = { subjectExpanded = false }) {
+                            DropdownMenuItem(text = { Text("— None —") }, onClick = { subject = ""; subjectExpanded = false })
+                            subjects.forEach { s ->
+                                DropdownMenuItem(
+                                    text    = { Text(if (s.code != null) "${s.name} (${s.code})" else s.name) },
+                                    onClick = { subject = s.name; subjectExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value         = subject,
+                        onValueChange = { subject = it },
+                        label         = { Text("Subject") },
+                        singleLine    = true,
+                        modifier      = Modifier.fillMaxWidth(),
+                        shape         = RoundedCornerShape(10.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary)
+                    )
+                }
+                OutlinedTextField(
+                    value         = description,
+                    onValueChange = { description = it },
+                    label         = { Text("Description *") },
+                    minLines      = 3,
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(10.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary)
+                )
+                DatePickerField(
+                    label          = "Due Date (optional)",
+                    value          = dueDate,
+                    onDateSelected = { dueDate = it },
+                    modifier       = Modifier.fillMaxWidth(),
+                    minDateMillis  = System.currentTimeMillis()
+                )
+                if (!dueDate.isNullOrBlank()) {
+                    TextButton(
+                        onClick        = { dueDate = "" },
+                        contentPadding = PaddingValues(0.dp)
+                    ) { Text("Clear due date", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                if (error != null) Text(error, color = Color(0xFFDC2626), fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick  = { onSubmit(title, description, subject, dueDate) },
+                enabled  = !isSubmitting,
+                shape    = RoundedCornerShape(10.dp),
+                colors   = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+            ) {
+                if (isSubmitting) CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                else Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { if (!isSubmitting) onDismiss() }) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
         shape = RoundedCornerShape(16.dp)
     )
 }

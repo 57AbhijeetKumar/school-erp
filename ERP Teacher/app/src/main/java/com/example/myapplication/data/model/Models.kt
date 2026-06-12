@@ -82,6 +82,7 @@ data class SubmissionsResponse(
 
 data class SubmissionEntry(val studentId: String, val status: String, val remark: String)
 data class MarkSubmissionsRequest(val submissions: List<SubmissionEntry>)
+data class UpdateHomeworkRequest(val title: String, val description: String, val subject: String, val dueDate: String)
 
 // ── Attendance ────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,8 @@ data class NoticeItem(
     val title: String,
     val content: String,
     val targetAudience: String,
-    val createdAt: String
+    val createdAt: String,
+    val expiryDate: String? = null
 )
 
 // ── Timetable ─────────────────────────────────────────────────────────────────
@@ -288,7 +290,7 @@ data class ParentExamItem(
 data class FeeRecord(
     val month:  String,
     val status: String,
-    val amount: Int,
+    val amount: Double,
     val paidAt: String?,
     val note:   String?
 )
@@ -305,7 +307,8 @@ data class ParentNoticeItem(
     val title:          String,
     val content:        String,
     val targetAudience: String,
-    val createdAt:      String
+    val createdAt:      String,
+    val expiryDate:     String? = null
 )
 
 // ── Timetable ─────────────────────────────────────────────────────────────────

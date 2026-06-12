@@ -398,7 +398,7 @@ private fun ApplyLeaveDialog(
         confirmButton = {
             Button(
                 onClick  = { onSubmit(fromDate, toDate, reason, leaveType) },
-                enabled  = !isSubmitting,
+                enabled  = !isSubmitting && fromDate.isNotEmpty() && toDate.isNotEmpty() && reason.trim().isNotEmpty(),
                 colors   = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
             ) { Text(if (isSubmitting) "Submitting…" else "Submit") }
         },

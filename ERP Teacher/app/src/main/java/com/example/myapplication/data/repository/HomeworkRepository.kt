@@ -3,6 +3,7 @@ package com.example.myapplication.data.repository
 import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.HomeworkItem
 import com.example.myapplication.data.model.MarkSubmissionsRequest
+import com.example.myapplication.data.model.UpdateHomeworkRequest
 import com.example.myapplication.data.model.SubjectItem
 import com.example.myapplication.data.model.SubmissionsResponse
 import com.example.myapplication.data.remote.ApiService
@@ -28,6 +29,9 @@ class HomeworkRepository(private val api: ApiService) {
     ): NetworkResult<JsonObject> = safeApiCall {
         api.addHomework("Bearer $token", classId, title, description, subject, dueDate, files)
     }
+
+    suspend fun updateHomework(token: String, id: String, request: UpdateHomeworkRequest): NetworkResult<JsonObject> =
+        safeApiCall { api.updateHomework("Bearer $token", id, request) }
 
     suspend fun deleteHomework(token: String, id: String): NetworkResult<JsonObject> =
         safeApiCall { api.deleteHomework("Bearer $token", id) }

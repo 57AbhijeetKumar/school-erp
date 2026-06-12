@@ -9,6 +9,7 @@ import com.example.myapplication.data.local.PreferenceManager
 import com.example.myapplication.data.model.ClassData
 import com.example.myapplication.data.model.HomeworkItem
 import com.example.myapplication.data.model.SubjectItem
+import com.example.myapplication.data.model.UpdateHomeworkRequest
 import com.example.myapplication.data.remote.RetrofitClient
 import com.example.myapplication.data.repository.HomeworkRepository
 import com.example.myapplication.data.util.NetworkResult
@@ -31,7 +32,9 @@ data class HomeworkUiState(
     val showAddDialog:    Boolean            = false,
     val isSubmitting:     Boolean            = false,
     val addError:         String?            = null,
-    val selectedFileUris: List<Uri>          = emptyList()
+    val selectedFileUris: List<Uri>          = emptyList(),
+    val editingHomework:  HomeworkItem?      = null,
+    val editError:        String?            = null
 )
 
 class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
@@ -72,6 +75,31 @@ class HomeworkViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openAddDialog()  { _uiState.value = _uiState.value.copy(showAddDialog = true,  addError = null) }
     fun closeAddDialog() { _uiState.value = _uiState.value.copy(showAddDialog = false, addError = null, selectedFileUris = emptyList()) }
+
+    fun openEditDialog(hw: HomeworkItem) { _uiState.value = _uiState.value.copy(editingHomework = hw, editError = null) }
+    fun closeEditDialog() { _uiState.value = _uiState.value.copy(editingHomework = null, editError = null) }
+
+    fun updateHomework(id: String, title: String, description: String, subject: String, dueDate: String) {
+        val token = prefManager.getToken() ?: return
+        if (title.isBlank())       { _uiState.value = _uiState.value.copy(editError = "Title is required");       return }
+        if (description.isBlank()) { _uiState.value = _uiState.value.copy(editError = "Description is required"); return }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmitting = true, editError = null)
+            when (val result = repository.updateHomework(token, id, UpdateHomeworkRequest(title.trim(), description.trim(), subject.trim(), dueDate.trim()))) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(isSubmitting = false, editingHomework = null)
+                    load()
+                }
+                is NetworkResult.Error -> _uiState.value = _uiState.value.copy(
+                    isSubmitting = false, editError = result.message ?: "Failed to update homework"
+                )
+                is NetworkResult.NetworkError -> _uiState.value = _uiState.value.copy(
+                    isSubmitting = false, editError = "Cannot connect to server"
+                )
+            }
+        }
+    }
 
     fun addFiles(uris: List<Uri>) {
         _uiState.value = _uiState.value.copy(

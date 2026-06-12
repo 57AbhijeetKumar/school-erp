@@ -232,8 +232,9 @@ private fun ComplaintCard(
                     }
                     if (showDelete) {
                         Spacer(Modifier.width(6.dp))
+                        var showDeleteConfirm by remember { mutableStateOf(false) }
                         IconButton(
-                            onClick  = { onDelete(complaint.id) },
+                            onClick  = { showDeleteConfirm = true },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
@@ -241,6 +242,21 @@ private fun ComplaintCard(
                                 contentDescription = "Delete",
                                 tint               = Color(0xFFDC2626),
                                 modifier           = Modifier.size(18.dp)
+                            )
+                        }
+                        if (showDeleteConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteConfirm = false },
+                                title            = { Text("Delete Complaint") },
+                                text             = { Text("Are you sure you want to delete this complaint? This cannot be undone.") },
+                                confirmButton    = {
+                                    TextButton(onClick = { showDeleteConfirm = false; onDelete(complaint.id) }) {
+                                        Text("Delete", color = Color(0xFFDC2626))
+                                    }
+                                },
+                                dismissButton    = {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                                }
                             )
                         }
                     }

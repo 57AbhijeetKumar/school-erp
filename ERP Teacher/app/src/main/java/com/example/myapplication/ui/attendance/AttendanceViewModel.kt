@@ -100,12 +100,15 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
                 date    = state.date,
                 records = state.records.map { AttendanceEntry(it.studentId, it.status) }
             )
-            when (repository.markAttendance(token, request)) {
+            when (val result = repository.markAttendance(token, request)) {
                 is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
                     isSaving = false, isMarked = true, saveSuccess = true
                 )
-                else -> _uiState.value = _uiState.value.copy(
-                    isSaving = false, error = "Failed to save attendance"
+                is NetworkResult.Error -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = result.message
+                )
+                is NetworkResult.NetworkError -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = "Cannot connect to server"
                 )
             }
         }
@@ -126,8 +129,11 @@ class AttendanceViewModel(app: Application) : AndroidViewModel(app) {
                         records   = body.records.toMutableList()
                     )
                 }
-                else -> _uiState.value = _uiState.value.copy(
-                    isLoading = false, error = "Failed to load attendance"
+                is NetworkResult.Error -> _uiState.value = _uiState.value.copy(
+                    isLoading = false, error = result.message
+                )
+                is NetworkResult.NetworkError -> _uiState.value = _uiState.value.copy(
+                    isLoading = false, error = "Cannot connect to server"
                 )
             }
         }

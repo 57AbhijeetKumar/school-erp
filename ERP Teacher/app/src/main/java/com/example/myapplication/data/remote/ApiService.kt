@@ -45,6 +45,9 @@ interface ApiService {
         @Part files: List<MultipartBody.Part>
     ): Response<JsonObject>
 
+    @PUT("api/app/homework/{id}")
+    suspend fun updateHomework(@Header("Authorization") bearerToken: String, @Path("id") id: String, @Body request: UpdateHomeworkRequest): Response<JsonObject>
+
     @DELETE("api/app/homework/{id}")
     suspend fun deleteHomework(@Header("Authorization") bearerToken: String, @Path("id") id: String): Response<JsonObject>
 
