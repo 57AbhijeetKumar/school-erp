@@ -119,13 +119,17 @@ private fun ExamCard(exam: ExamItem, onEnterMarks: () -> Unit, onViewResults: ()
                         Text(exam.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GreenDark)
                         Text(exam.classInfo.fullName, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (exam.type == "annual") Color(0xFFDDD6FE) else GreenSurface
-                    ) {
+                    val (examTypeLabel, examTypeBg, examTypeColor) = when (exam.type) {
+                        "annual"      -> Triple("Annual",      Color(0xFFDDD6FE), Color(0xFF7C3AED))
+                        "half_yearly" -> Triple("Half Yearly", Color(0xFFFDE68A), Color(0xFF92400E))
+                        "quarterly"   -> Triple("Quarterly",   Color(0xFFBFDBFE), Color(0xFF1D4ED8))
+                        "pre_board"   -> Triple("Pre Board",   Color(0xFFFFEDD5), Color(0xFFEA580C))
+                        else          -> Triple("Unit Test",   GreenSurface,      GreenPrimary)
+                    }
+                    Surface(shape = RoundedCornerShape(8.dp), color = examTypeBg) {
                         Text(
-                            text       = if (exam.type == "annual") "Annual" else "Unit Test",
-                            color      = if (exam.type == "annual") Color(0xFF7C3AED) else GreenPrimary,
+                            text       = examTypeLabel,
+                            color      = examTypeColor,
                             fontSize   = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)

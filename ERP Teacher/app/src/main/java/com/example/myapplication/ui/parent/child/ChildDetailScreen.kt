@@ -570,13 +570,16 @@ private fun FeesTab(viewModel: ChildDetailViewModel) {
         state.data == null || state.data!!.fees.isEmpty() -> CenterEmpty("No fee records found", "💰")
         else -> {
             val fees      = state.data!!.fees
-            val paidCount = fees.count { it.status == "paid" }
+            val paidCount    = fees.count { it.status == "paid" }
+            val partialCount = fees.count { it.status == "partial" }
+            val dueCount     = fees.count { it.status == "due" }
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatPill("Total", fees.size.toString(),                Color(0xFF6366F1), Modifier.weight(1f))
-                        StatPill("Paid",  paidCount.toString(),                Color(0xFF10B981), Modifier.weight(1f))
-                        StatPill("Due",   (fees.size - paidCount).toString(),  Color(0xFFEF4444), Modifier.weight(1f))
+                        StatPill("Paid",    paidCount.toString(),    Color(0xFF10B981), Modifier.weight(1f))
+                        if (partialCount > 0)
+                            StatPill("Partial", partialCount.toString(), Color(0xFFF59E0B), Modifier.weight(1f))
+                        StatPill("Due",     dueCount.toString(),     Color(0xFFEF4444), Modifier.weight(1f))
                     }
                 }
                 items(fees, key = { it.month }) { fee -> FeeCard(fee) }
@@ -588,8 +591,11 @@ private fun FeesTab(viewModel: ChildDetailViewModel) {
 
 @Composable
 private fun FeeCard(fee: FeeRecord) {
-    val isPaid      = fee.status == "paid"
-    val accentColor = if (isPaid) Color(0xFF10B981) else Color(0xFFEF4444)
+    val accentColor = when (fee.status) {
+        "paid"    -> Color(0xFF10B981)
+        "partial" -> Color(0xFFF59E0B)
+        else      -> Color(0xFFEF4444)
+    }
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(12.dp),
@@ -604,8 +610,9 @@ private fun FeeCard(fee: FeeRecord) {
                     if (fee.amount > 0) {
                         Text("₹ ${fee.amount}", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = BlueDark)
                     }
-                    if (!fee.paidAt.isNullOrBlank()) {
-                        Text("Paid on ${formatDateShort(fee.paidAt)}", fontSize = 11.sp, color = Color(0xFF10B981))
+                    if (!fee.paidAt.isNullOrBlank() && fee.status != "due") {
+                        val paidLabel = if (fee.status == "partial") "Partially paid on" else "Paid on"
+                        Text("$paidLabel ${formatDateShort(fee.paidAt)}", fontSize = 11.sp, color = accentColor)
                     }
                     if (!fee.note.isNullOrBlank()) {
                         Text(fee.note, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -613,7 +620,7 @@ private fun FeeCard(fee: FeeRecord) {
                 }
                 Surface(color = accentColor.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
                     Text(
-                        if (isPaid) "Paid" else "Due",
+                        when (fee.status) { "paid" -> "Paid"; "partial" -> "Partial"; else -> "Due" },
                         color      = accentColor,
                         fontWeight = FontWeight.Bold,
                         fontSize   = 13.sp,

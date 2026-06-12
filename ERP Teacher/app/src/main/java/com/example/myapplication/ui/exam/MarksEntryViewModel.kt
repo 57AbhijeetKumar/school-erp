@@ -99,12 +99,15 @@ class MarksEntryViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
                 .filter { it.marks.isNotEmpty() }
-            when (repository.submitMarks(token, examId, SubmitMarksRequest(results))) {
+            when (val result = repository.submitMarks(token, examId, SubmitMarksRequest(results))) {
                 is NetworkResult.Success -> _uiState.value = _uiState.value.copy(
                     isSaving = false, saveSuccess = true
                 )
-                else -> _uiState.value = _uiState.value.copy(
-                    isSaving = false, error = "Failed to save marks"
+                is NetworkResult.Error -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = result.message
+                )
+                is NetworkResult.NetworkError -> _uiState.value = _uiState.value.copy(
+                    isSaving = false, error = "Cannot connect to server"
                 )
             }
         }
