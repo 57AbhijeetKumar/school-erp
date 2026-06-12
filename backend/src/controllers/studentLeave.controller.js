@@ -117,6 +117,21 @@ const resolveLeaveByTeacher = async (req, res) => {
     if (!leave) return res.status(404).json({ message: 'Leave request not found' });
     if (leave.status !== 'pending') return res.status(400).json({ message: 'Already resolved' });
 
+    if (action === 'approve') {
+      const overlap = await StudentLeave.findOne({
+        student: leave.student,
+        status:  'approved',
+        _id:     { $ne: leave._id },
+        fromDate: { $lte: leave.toDate },
+        toDate:   { $gte: leave.fromDate },
+      });
+      if (overlap) {
+        return res.status(409).json({
+          message: 'Student already has an approved leave that overlaps with these dates',
+        });
+      }
+    }
+
     leave.status           = action === 'approve' ? 'approved' : 'rejected';
     leave.resolvedAt       = new Date();
     leave.resolvedByRole   = 'teacher';
@@ -183,6 +198,21 @@ const resolveLeaveByAdmin = async (req, res) => {
     const leave = await StudentLeave.findOne({ _id: req.params.id, school: req.user.school });
     if (!leave) return res.status(404).json({ message: 'Leave request not found' });
     if (leave.status !== 'pending') return res.status(400).json({ message: 'Already resolved' });
+
+    if (action === 'approve') {
+      const overlap = await StudentLeave.findOne({
+        student: leave.student,
+        status:  'approved',
+        _id:     { $ne: leave._id },
+        fromDate: { $lte: leave.toDate },
+        toDate:   { $gte: leave.fromDate },
+      });
+      if (overlap) {
+        return res.status(409).json({
+          message: 'Student already has an approved leave that overlaps with these dates',
+        });
+      }
+    }
 
     leave.status          = action === 'approve' ? 'approved' : 'rejected';
     leave.resolvedAt      = new Date();

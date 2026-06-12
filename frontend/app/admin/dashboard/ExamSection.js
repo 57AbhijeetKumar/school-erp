@@ -268,6 +268,20 @@ function MarksEntryModal({ exam, onClose, onSaved }) {
         }
       }
     }
+
+    // Warn if any student has zero marks across all subjects
+    const allZeroStudents = students.filter(s => {
+      const sid = s.id ?? s._id
+      return exam.subjects.every(sub => Number(marksMap[sid]?.[sub.name] ?? 0) === 0)
+    })
+    if (allZeroStudents.length > 0) {
+      const names = allZeroStudents.map(s => s.name).join(', ')
+      const confirmed = window.confirm(
+        `${allZeroStudents.length} student(s) have 0 marks in all subjects: ${names}\n\nThis will result in 0% / Grade F for them. Continue?`
+      )
+      if (!confirmed) return
+    }
+
     setErr('')
     const results = students.map(s => {
       const sid = s.id ?? s._id

@@ -134,8 +134,26 @@ const deleteComplaintByTeacher = async (req, res) => {
 // GET /api/complaints
 const getComplaintsForAdmin = async (req, res) => {
   try {
+    const schoolId = req.user.school;
+    if (!schoolId) return res.status(403).json({ message: 'No school associated with this account' });
+
     const { status, severity, raisedByRole, classId } = req.query;
-    const filter = { school: req.user.school };
+
+    const VALID_STATUS = ['open', 'acknowledged', 'resolved'];
+    const VALID_SEVERITY = ['low', 'medium', 'high'];
+    const VALID_ROLE = ['teacher', 'parent'];
+
+    if (status && !VALID_STATUS.includes(status)) {
+      return res.status(400).json({ message: `status must be one of: ${VALID_STATUS.join(', ')}` });
+    }
+    if (severity && !VALID_SEVERITY.includes(severity)) {
+      return res.status(400).json({ message: `severity must be one of: ${VALID_SEVERITY.join(', ')}` });
+    }
+    if (raisedByRole && !VALID_ROLE.includes(raisedByRole)) {
+      return res.status(400).json({ message: `raisedByRole must be one of: ${VALID_ROLE.join(', ')}` });
+    }
+
+    const filter = { school: schoolId };
     if (status)       filter.status       = status;
     if (severity)     filter.severity     = severity;
     if (raisedByRole) filter.raisedByRole = raisedByRole;

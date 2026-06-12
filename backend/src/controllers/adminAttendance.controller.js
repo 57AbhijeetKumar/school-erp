@@ -9,7 +9,10 @@ const getClassAttendance = async (req, res) => {
     const cls = await Class.findOne({ _id: req.params.classId, school: schoolId });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
-    const dateStr        = req.query.date || new Date().toISOString().split('T')[0];
+    const dateStr = req.query.date || new Date().toISOString().split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res.status(400).json({ message: 'date must be in YYYY-MM-DD format' });
+    }
     const attendanceDate = new Date(dateStr + 'T00:00:00.000Z');
 
     const students = await Student
@@ -107,9 +110,18 @@ const markClassAttendance = async (req, res) => {
       return res.status(400).json({ message: 'date and records are required' });
     }
 
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'date must be in YYYY-MM-DD format' });
+    }
+
     const today = new Date().toISOString().split('T')[0];
     if (date > today) {
       return res.status(400).json({ message: 'Cannot mark attendance for a future date' });
+    }
+
+    const dayOfWeek = new Date(date + 'T00:00:00.000Z').getDay(); // 0 = Sunday
+    if (dayOfWeek === 0) {
+      return res.status(400).json({ message: 'Cannot mark attendance on Sunday' });
     }
 
     const VALID = ['present', 'absent', 'late'];

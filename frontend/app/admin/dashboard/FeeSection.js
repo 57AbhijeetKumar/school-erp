@@ -62,6 +62,11 @@ export default function FeeSection({ classes }) {
       setError('Enter a valid fee amount before marking all as paid.')
       return
     }
+    const total = data?.summary?.total ?? 0
+    const confirmed = window.confirm(
+      `Mark all ${total} students as "${status}" for ${monthLabel(month)}?\n\nAlready-paid records will be skipped automatically.`
+    )
+    if (!confirmed) return
     startSave(async () => {
       const amt = amountInput ? Number(amountInput) : 0
       await markBulkFee(selectedClass, month, status, amt)
@@ -140,12 +145,13 @@ export default function FeeSection({ classes }) {
           {/* Summary */}
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Total',  value: data.summary.total, cls: 'bg-slate-50  text-slate-700'   },
-              { label: 'Paid',   value: data.summary.paid,  cls: 'bg-emerald-50 text-emerald-700' },
-              { label: 'Due',    value: data.summary.due,   cls: 'bg-red-50    text-red-700'      },
-            ].map(s => (
+              { label: 'Total',   value: data.summary.total,   cls: 'bg-slate-50  text-slate-700'   },
+              { label: 'Paid',    value: data.summary.paid,    cls: 'bg-emerald-50 text-emerald-700' },
+              { label: 'Partial', value: data.summary.partial, cls: 'bg-amber-50  text-amber-700'   },
+              { label: 'Due',     value: data.summary.due,     cls: 'bg-red-50    text-red-700'      },
+            ].filter(s => s.label === 'Partial' ? (s.value ?? 0) > 0 : true).map(s => (
               <div key={s.label} className={`px-4 py-2 rounded-xl text-sm font-semibold ${s.cls}`}>
-                {s.label}: {s.value}
+                {s.label}: {s.value ?? 0}
               </div>
             ))}
           </div>
@@ -189,11 +195,11 @@ export default function FeeSection({ classes }) {
                     <td className="px-4 py-2.5 font-medium text-slate-800">{s.name}</td>
                     <td className="px-4 py-2.5">
                       <span className={`inline-block text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-                        s.status === 'paid'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-red-50 text-red-700'
+                        s.status === 'paid'    ? 'bg-emerald-50 text-emerald-700' :
+                        s.status === 'partial' ? 'bg-amber-50   text-amber-700'  :
+                                                 'bg-red-50     text-red-700'
                       }`}>
-                        {s.status === 'paid' ? 'Paid' : 'Due'}
+                        {s.status === 'paid' ? 'Paid' : s.status === 'partial' ? 'Partial' : 'Due'}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-slate-600">

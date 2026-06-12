@@ -87,8 +87,8 @@ const markFee = async (req, res) => {
     if (!['paid', 'partial', 'due'].includes(status)) {
       return res.status(400).json({ message: 'status must be "paid", "partial", or "due"' });
     }
-    if (amount !== undefined && Number(amount) < 0) {
-      return res.status(400).json({ message: 'amount cannot be negative' });
+    if (amount !== undefined && (Number(amount) < 0 || Number(amount) > 1000000)) {
+      return res.status(400).json({ message: 'amount must be between 0 and 1,000,000' });
     }
     if (status === 'partial' && (!amount || Number(amount) <= 0)) {
       return res.status(400).json({ message: 'amount is required and must be > 0 for partial payment' });
@@ -145,8 +145,8 @@ const markBulkFee = async (req, res) => {
     if (!['paid', 'partial', 'due'].includes(status)) {
       return res.status(400).json({ message: 'status must be "paid", "partial", or "due"' });
     }
-    if (amount !== undefined && Number(amount) < 0) {
-      return res.status(400).json({ message: 'amount cannot be negative' });
+    if (amount !== undefined && (Number(amount) < 0 || Number(amount) > 1000000)) {
+      return res.status(400).json({ message: 'amount must be between 0 and 1,000,000' });
     }
     if (status === 'partial' && (!amount || Number(amount) <= 0)) {
       return res.status(400).json({ message: 'amount is required and must be > 0 for partial payment' });
@@ -156,31 +156,44 @@ const markBulkFee = async (req, res) => {
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
     const students = await Student
-      .find({ enrolledClass: classId, school: schoolId })
+      .find({ enrolledClass: classId, school: schoolId, isDeleted: { $ne: true } })
       .select('_id');
 
-    const ops = students.map(s => ({
-      updateOne: {
-        filter: { student: s._id, month },
-        update: {
-          $set: {
-            student:  s._id,
-            class:    classId,
-            school:   schoolId,
-            month,
-            status,
-            amount:   amount ?? 0,
-            markedBy: req.user.id,
-            paidAt:   status === 'paid' ? new Date() : null,
+    // Protect already-paid records — skip them to avoid overwriting payment history
+    const paidIds = new Set(
+      (await Fee.find({ class: classId, month, status: 'paid' }).distinct('student'))
+        .map(id => id.toString())
+    );
+
+    const ops = students
+      .filter(s => !paidIds.has(s._id.toString()))
+      .map(s => ({
+        updateOne: {
+          filter: { student: s._id, month },
+          update: {
+            $set: {
+              student:  s._id,
+              class:    classId,
+              school:   schoolId,
+              month,
+              status,
+              amount:   amount ?? 0,
+              markedBy: req.user.id,
+              paidAt:   status === 'paid' ? new Date() : null,
+            },
           },
+          upsert: true,
         },
-        upsert: true,
-      },
-    }));
+      }));
 
     if (ops.length > 0) await Fee.bulkWrite(ops);
 
-    res.json({ message: `${ops.length} student fee(s) marked as ${status}` });
+    const skipped = students.length - ops.length;
+    res.json({
+      message: `${ops.length} student fee(s) marked as ${status}${skipped > 0 ? ` (${skipped} already-paid record(s) skipped)` : ''}`,
+      updated: ops.length,
+      skipped,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

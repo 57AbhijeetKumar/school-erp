@@ -286,6 +286,9 @@ const reportCard = async (req, res) => {
       return res.status(400).json({ message: 'studentId and academicYear are required' });
     }
     if (!isValidId(studentId)) return res.status(400).json({ message: 'Invalid studentId format' });
+    if (!/^\d{4}-\d{2}$/.test(academicYear)) {
+      return res.status(400).json({ message: 'academicYear must be in YYYY-YY format (e.g. 2024-25)' });
+    }
 
     const student = await Student
       .findOne({ _id: studentId, school: schoolId })

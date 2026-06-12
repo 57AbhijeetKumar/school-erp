@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+const { protect, adminOnly, schoolScope } = require('../middleware/auth.middleware');
 const {
   getComplaintsForAdmin,
   acknowledgeComplaint,
@@ -7,9 +7,9 @@ const {
   deleteComplaintByAdmin,
 } = require('../controllers/complaint.controller');
 
-router.get('/',                  protect, adminOnly, getComplaintsForAdmin);
-router.patch('/:id/acknowledge', protect, adminOnly, acknowledgeComplaint);
-router.patch('/:id/resolve',     protect, adminOnly, resolveComplaint);
-router.delete('/:id',            protect, adminOnly, deleteComplaintByAdmin);
+router.get('/',                  protect, adminOnly, schoolScope, getComplaintsForAdmin);
+router.patch('/:id/acknowledge', protect, adminOnly, schoolScope, acknowledgeComplaint);
+router.patch('/:id/resolve',     protect, adminOnly, schoolScope, resolveComplaint);
+router.delete('/:id',            protect, adminOnly, schoolScope, deleteComplaintByAdmin);
 
 module.exports = router;

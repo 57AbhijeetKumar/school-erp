@@ -149,4 +149,45 @@ const getSchoolStudents = async (req, res) => {
   }
 };
 
-module.exports = { getHomework, addHomework, deleteHomework, getSchoolClasses, getSchoolStudents };
+// PUT /api/app/homework/:id  (teacher — edit own homework)
+const updateHomework = async (req, res) => {
+  try {
+    const hw = await Homework.findOne({
+      _id:        req.params.id,
+      assignedBy: req.teacher.id,
+      school:     req.teacher.school,
+    });
+    if (!hw) return res.status(404).json({ message: 'Homework not found or you are not authorised to edit it' });
+
+    const { title, description, subject, dueDate } = req.body;
+    if (title !== undefined) {
+      const t = title?.trim();
+      if (!t) return res.status(400).json({ message: 'Title cannot be empty' });
+      hw.title = t;
+    }
+    if (description !== undefined) {
+      const d = description?.trim();
+      if (!d) return res.status(400).json({ message: 'Description cannot be empty' });
+      hw.description = d;
+    }
+    if (subject !== undefined) hw.subject = subject?.trim() || undefined;
+    if (dueDate !== undefined) {
+      if (dueDate) {
+        const due = new Date(dueDate);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (isNaN(due)) return res.status(400).json({ message: 'Invalid due date format' });
+        if (due < today) return res.status(400).json({ message: 'Due date cannot be in the past' });
+        hw.dueDate = due;
+      } else {
+        hw.dueDate = undefined;
+      }
+    }
+    await hw.save();
+    await hw.populate('assignedBy', 'name');
+    res.json({ message: 'Homework updated', homework: hw });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getHomework, addHomework, deleteHomework, updateHomework, getSchoolClasses, getSchoolStudents };

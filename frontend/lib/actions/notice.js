@@ -44,10 +44,16 @@ export async function createNotice(_prevState, formData) {
 export async function updateNotice(noticeId, data) {
   const token = await getToken()
   try {
+    const payload = {
+      title:          data.title,
+      content:        data.content,
+      targetAudience: data.targetAudience,
+      expiryDate:     data.expiryDate || null,
+    }
     const res = await fetch(`${API}/api/notices/${noticeId}`, {
       method:  'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify(data),
+      body:    JSON.stringify(payload),
     })
     const body = await res.json()
     if (!res.ok) return { error: body.message }

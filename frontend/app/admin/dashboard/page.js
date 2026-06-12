@@ -48,11 +48,14 @@ export default async function AdminDashboard() {
 
   const subscription = subscriptionRaw && !Array.isArray(subscriptionRaw) ? subscriptionRaw : {}
 
-  const classesWithStudents = await Promise.all(
+  const classesWithStudents = await Promise.allSettled(
     classes.map(async cls => ({
       ...cls,
       students: await apiFetch(`/api/students/class/${cls._id}`, token),
     }))
+  ).then(results => results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => r.value)
   )
 
   return (

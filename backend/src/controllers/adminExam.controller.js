@@ -1,7 +1,10 @@
+const mongoose   = require('mongoose');
 const Exam       = require('../models/Exam');
 const ExamResult = require('../models/ExamResult');
 const Class      = require('../models/Class');
 const Student    = require('../models/Student');
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 function calcGrade(pct) {
   if (pct >= 90) return 'A+';
@@ -38,9 +41,13 @@ const createExam = async (req, res) => {
       return res.status(400).json({ message: 'academicYear must be in YYYY-YY format (e.g. 2024-25)' });
     }
 
-    const badSubject = subjects.find(s => !s.name?.trim() || Number(s.maxMarks) <= 0);
+    const badSubject = subjects.find(s => !s.name?.trim() || Number(s.maxMarks) <= 0 || !Number.isInteger(Number(s.maxMarks)));
     if (badSubject) {
-      return res.status(400).json({ message: 'Each subject must have a name and maxMarks greater than 0' });
+      return res.status(400).json({ message: 'Each subject must have a name and maxMarks as a positive integer' });
+    }
+    const subNames = subjects.map(s => s.name.trim().toLowerCase());
+    if (new Set(subNames).size !== subNames.length) {
+      return res.status(400).json({ message: 'Duplicate subject names are not allowed in the same exam' });
     }
 
     const cls = await Class.findOne({ _id: classId, school: schoolId });
@@ -86,7 +93,12 @@ const getExams = async (req, res) => {
     const limit  = Math.min(100, parseInt(req.query.limit) || 20);
     const skip   = (page - 1) * limit;
     const filter = { school: schoolId };
-    if (req.query.classId) filter.class = req.query.classId;
+    if (req.query.classId) {
+      if (!isValidId(req.query.classId)) {
+        return res.status(400).json({ message: 'Invalid classId format' });
+      }
+      filter.class = req.query.classId;
+    }
 
     const [exams, total] = await Promise.all([
       Exam.find(filter).populate('class', 'name section').sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -185,8 +197,18 @@ const publishExam = async (req, res) => {
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
     if (exam.isPublished) return res.status(400).json({ message: 'Already published' });
 
-    const resultCount = await ExamResult.countDocuments({ exam: exam._id });
-    if (resultCount === 0) return res.status(400).json({ message: 'No marks entered yet' });
+    const [resultCount, enrolledCount] = await Promise.all([
+      ExamResult.countDocuments({ exam: exam._id }),
+      Student.countDocuments({ enrolledClass: exam.class, school: schoolId, isDeleted: { $ne: true } }),
+    ]);
+    if (resultCount === 0) return res.status(400).json({ message: 'No marks entered yet. Enter marks for all students before publishing.' });
+    if (resultCount < enrolledCount) {
+      return res.status(400).json({
+        message: `${enrolledCount - resultCount} student(s) still have no marks entered. Enter marks for all students before publishing.`,
+        resultCount,
+        enrolledCount,
+      });
+    }
 
     exam.isPublished = true;
     await exam.save();

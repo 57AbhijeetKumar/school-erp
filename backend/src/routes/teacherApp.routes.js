@@ -21,7 +21,7 @@ const multerUpload = (req, res, next) =>
     err ? res.status(400).json({ message: err.message }) : next()
   );
 const { getAttendance, markAttendance } = require('../controllers/teacherAttendance.controller');
-const { getHomework, addHomework, deleteHomework, getSchoolClasses, getSchoolStudents } = require('../controllers/teacherHomework.controller');
+const { getHomework, addHomework, deleteHomework, updateHomework, getSchoolClasses, getSchoolStudents } = require('../controllers/teacherHomework.controller');
 const { getMyExams, getExamForMarks, submitMarks, getExamResults }  = require('../controllers/teacherExam.controller');
 const { getSubmissions, markSubmissions } = require('../controllers/teacherSubmission.controller');
 const { submitTeacherLeave, getMyLeaveRequests } = require('../controllers/teacherLeave.controller');
@@ -38,6 +38,7 @@ router.get('/classes',                     teacherProtect, getSchoolClasses);
 router.get('/students',                    teacherProtect, getSchoolStudents);
 router.get('/homework',                    teacherProtect, getHomework);
 router.post('/homework',                   teacherProtect, multerUpload, addHomework);
+router.put('/homework/:id',                teacherProtect, updateHomework);
 router.delete('/homework/:id',             teacherProtect, deleteHomework);
 router.get('/homework/:id/submissions',    teacherProtect, getSubmissions);
 router.post('/homework/:id/submissions',   teacherProtect, markSubmissions);
