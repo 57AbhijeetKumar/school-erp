@@ -18,8 +18,12 @@ const addStudent = async (req, res) => {
     const cleanName       = stripHtml(name.trim());
     const cleanParentName = stripHtml(parentName?.trim());
     const cleanSession    = stripHtml(admissionSession?.trim());
+    if (!cleanName) return res.status(400).json({ message: 'Student name is required' });
     if (cleanName.length > 100) return res.status(400).json({ message: 'Student name cannot exceed 100 characters' });
     if (cleanParentName?.length > 100) return res.status(400).json({ message: 'Parent name cannot exceed 100 characters' });
+    if (roll && !/^\d+$/.test(roll)) {
+      return res.status(400).json({ message: 'Roll number must be a positive integer' });
+    }
     if (dob && new Date(dob) > new Date()) {
       return res.status(400).json({ message: 'Date of birth cannot be in the future' });
     }
@@ -83,6 +87,9 @@ const updateStudent = async (req, res) => {
 
     if (!cleanName) return res.status(400).json({ message: 'Student name is required' });
 
+    if (roll && !/^\d+$/.test(roll)) {
+      return res.status(400).json({ message: 'Roll number must be a positive integer' });
+    }
     if (parentMobile && !/^\d{10}$/.test(parentMobile.trim())) {
       return res.status(400).json({ message: 'Parent mobile must be 10 digits' });
     }

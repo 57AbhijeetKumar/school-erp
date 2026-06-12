@@ -3,6 +3,8 @@ const Class    = require('../models/Class');
 const Homework = require('../models/Homework');
 const { stripHtml } = require('../utils/sanitize');
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const createTeacher = async (req, res) => {
   try {
     const { name, mobile, subject, email } = req.body;
@@ -15,9 +17,15 @@ const createTeacher = async (req, res) => {
       return res.status(400).json({ message: 'Mobile must be a valid 10-digit number starting with 6–9' });
     }
     const cleanName = stripHtml(name.trim());
+    if (!cleanName) return res.status(400).json({ message: 'Teacher name is required' });
     if (cleanName.length > 100) return res.status(400).json({ message: 'Teacher name cannot exceed 100 characters' });
 
-    const exists = await Teacher.findOne({ mobile });
+    const cleanEmail = email?.trim() ? stripHtml(email.trim()) : undefined;
+    if (cleanEmail && !EMAIL_RE.test(cleanEmail)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    const exists = await Teacher.findOne({ mobile: mobile.trim(), school: schoolId });
     if (exists) {
       return res.status(409).json({ message: 'Mobile number already registered to another teacher' });
     }
@@ -26,7 +34,7 @@ const createTeacher = async (req, res) => {
       name:     cleanName,
       mobile:   mobile.trim(),
       subject:  stripHtml(subject?.trim()) || undefined,
-      email:    stripHtml(email?.trim())   || undefined,
+      email:    cleanEmail || undefined,
       password: '123456',
       school:   schoolId,
     });
@@ -112,4 +120,60 @@ const toggleTeacherActive = async (req, res) => {
   }
 };
 
-module.exports = { createTeacher, getAllTeachers, toggleTeacherActive, deleteTeacher };
+// PATCH /api/teachers/:id
+const updateTeacher = async (req, res) => {
+  try {
+    const { name, mobile, subject, email } = req.body;
+    const schoolId = req.user.school;
+
+    const teacher = await Teacher.findOne({ _id: req.params.id, school: schoolId });
+    if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+
+    if (name !== undefined) {
+      const cleanName = stripHtml(name.trim());
+      if (!cleanName) return res.status(400).json({ message: 'Teacher name cannot be empty' });
+      if (cleanName.length > 100) return res.status(400).json({ message: 'Teacher name cannot exceed 100 characters' });
+      teacher.name = cleanName;
+    }
+
+    if (mobile !== undefined) {
+      const mob = mobile.trim();
+      if (!/^[6-9]\d{9}$/.test(mob)) {
+        return res.status(400).json({ message: 'Mobile must be a valid 10-digit number starting with 6–9' });
+      }
+      const duplicate = await Teacher.findOne({ mobile: mob, school: schoolId, _id: { $ne: teacher._id } });
+      if (duplicate) return res.status(409).json({ message: 'Mobile number already registered to another teacher' });
+      teacher.mobile = mob;
+    }
+
+    if (email !== undefined) {
+      const cleanEmail = email.trim() ? stripHtml(email.trim()) : '';
+      if (cleanEmail && !EMAIL_RE.test(cleanEmail)) {
+        return res.status(400).json({ message: 'Invalid email format' });
+      }
+      teacher.email = cleanEmail || undefined;
+    }
+
+    if (subject !== undefined) {
+      teacher.subject = stripHtml(subject?.trim()) || undefined;
+    }
+
+    await teacher.save();
+
+    res.json({
+      message: 'Teacher updated successfully',
+      teacher: {
+        _id:      teacher._id,
+        name:     teacher.name,
+        mobile:   teacher.mobile,
+        subject:  teacher.subject || null,
+        email:    teacher.email   || null,
+        isActive: teacher.isActive,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { createTeacher, getAllTeachers, toggleTeacherActive, deleteTeacher, updateTeacher };

@@ -5,6 +5,7 @@ import {
   createClass   as createClassAction,
   assignTeacher as assignTeacherAction,
   deleteClass   as deleteClassAction,
+  updateClass   as updateClassAction,
 } from '@/lib/actions/class'
 import {
   addStudent             as addStudentAction,
@@ -106,6 +107,26 @@ export default function ClassSection({ classes, teachers }) {
   useEffect(() => {
     if (editState?.success) { setEditingStudent(null); setEditKey(k => k + 1) }
   }, [editState?.success])
+
+  const [renamingId,   setRenamingId]   = useState(null)
+  const [renameData,   setRenameData]   = useState({ name: '', section: '' })
+  const [renameError,  setRenameError]  = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
+
+  function startRename(cls) {
+    setRenamingId(cls._id)
+    setRenameData({ name: cls.name, section: cls.section || '' })
+    setRenameError('')
+  }
+
+  async function saveRename() {
+    setRenameSaving(true)
+    setRenameError('')
+    const res = await updateClassAction(renamingId, renameData)
+    setRenameSaving(false)
+    if (res?.error) { setRenameError(res.error); return }
+    setRenamingId(null)
+  }
 
   const [deletingClassId,  setDeletingClassId]  = useState(null)
   const [classDeleteError, setClassDeleteError] = useState('')
@@ -252,7 +273,42 @@ export default function ClassSection({ classes, teachers }) {
                       {i + 1}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 text-sm">{label}</p>
+                      {/* Class name / rename form */}
+                      {renamingId === cls._id ? (
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <input
+                            value={renameData.name}
+                            onChange={e => setRenameData(d => ({ ...d, name: e.target.value }))}
+                            placeholder="Class name"
+                            maxLength={100}
+                            className="px-2 py-1 border border-slate-300 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 w-28"
+                          />
+                          <input
+                            value={renameData.section}
+                            onChange={e => setRenameData(d => ({ ...d, section: e.target.value }))}
+                            placeholder="Section (opt)"
+                            className="px-2 py-1 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 w-24"
+                          />
+                          <button onClick={saveRename} disabled={renameSaving}
+                            className="px-2 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg">
+                            {renameSaving ? '…' : 'Save'}
+                          </button>
+                          <button onClick={() => setRenamingId(null)}
+                            className="px-2 py-1 text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">
+                            Cancel
+                          </button>
+                          {renameError && <p className="text-xs text-red-600 w-full">{renameError}</p>}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-800 text-sm">{label}</p>
+                          <button onClick={() => startRename(cls)}
+                            className="text-xs px-1.5 py-0.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Rename class">
+                            ✏️
+                          </button>
+                        </div>
+                      )}
 
                       {/* Teacher display / assign form */}
                       {isAssigning ? (

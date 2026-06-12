@@ -136,6 +136,11 @@ app.use('/api/superadmin/analytics', superadminAnalyticsRoutes);
 app.use('/api/reports',              reportRoutes);
 app.use('/api/substitutions',        substitutionRoutes);
 
+// ── 404 handler — catch unmatched routes and return JSON ─────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 // ── Global error handler ──────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {

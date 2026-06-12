@@ -45,6 +45,15 @@ const updateSubject = async (req, res) => {
     const cleanName = stripHtml(name?.trim());
     const cleanCode = stripHtml(code?.trim());
     if (!cleanName) return res.status(400).json({ message: 'Subject name is required' });
+    if (cleanName.length > 100) return res.status(400).json({ message: 'Subject name cannot exceed 100 characters' });
+    if (cleanCode?.length > 20) return res.status(400).json({ message: 'Subject code cannot exceed 20 characters' });
+
+    const duplicate = await Subject.findOne({
+      school: req.user.school,
+      name:   new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+      _id:    { $ne: req.params.id },
+    });
+    if (duplicate) return res.status(409).json({ message: `Subject "${cleanName}" already exists` });
 
     const subject = await Subject.findOneAndUpdate(
       { _id: req.params.id, school: req.user.school },

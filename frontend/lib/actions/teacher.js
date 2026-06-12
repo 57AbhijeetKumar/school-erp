@@ -49,6 +49,31 @@ export async function toggleTeacherStatus(formData) {
   } catch { /* silent */ }
 }
 
+export async function updateTeacher(teacherId, data) {
+  const jar   = await cookies()
+  const token = jar.get('erp_token')?.value
+  if (!token) return { error: 'Not authenticated' }
+
+  const { name, mobile, subject, email } = data
+
+  if (!name?.trim()) return { error: 'Name is required' }
+  if (!/^[6-9]\d{9}$/.test(mobile?.trim() || '')) return { error: 'Enter a valid 10-digit mobile number starting with 6–9' }
+
+  try {
+    const res = await fetch(`${process.env.BACKEND_URL}/api/teachers/${teacherId}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ name: name.trim(), mobile: mobile.trim(), subject: subject?.trim() || undefined, email: email?.trim() || undefined }),
+    })
+    const body = await res.json()
+    if (!res.ok) return { error: body.message || 'Failed to update teacher' }
+    revalidatePath('/admin/dashboard')
+    return { success: true }
+  } catch {
+    return { error: 'Cannot reach server. Is the backend running?' }
+  }
+}
+
 export async function removeTeacher(formData) {
   const jar   = await cookies()
   const token = jar.get('erp_token')?.value

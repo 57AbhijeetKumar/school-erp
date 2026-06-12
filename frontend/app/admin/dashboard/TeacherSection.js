@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { addTeacher, toggleTeacherStatus, removeTeacher } from '@/lib/actions/teacher'
+import { addTeacher, toggleTeacherStatus, removeTeacher, updateTeacher } from '@/lib/actions/teacher'
 
 const PAGE_SIZE = 10
 
@@ -12,6 +12,29 @@ export default function TeacherSection({ teachers, subjects = [] }) {
   const [search,     setSearch]     = useState('')
   const [page,       setPage]       = useState(1)
   const [state, action, pending]    = useActionState(addTeacher, null)
+
+  // Edit state
+  const [editingId,  setEditingId]  = useState(null)
+  const [editData,   setEditData]   = useState({})
+  const [editError,  setEditError]  = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+
+  function startEdit(t) {
+    setEditingId(t._id)
+    setEditData({ name: t.name, mobile: t.mobile, subject: t.subject || '', email: t.email || '' })
+    setEditError('')
+  }
+
+  function cancelEdit() { setEditingId(null); setEditError('') }
+
+  async function saveEdit() {
+    setEditSaving(true)
+    setEditError('')
+    const res = await updateTeacher(editingId, editData)
+    setEditSaving(false)
+    if (res?.error) { setEditError(res.error); return }
+    setEditingId(null)
+  }
 
   const filtered = teachers.filter(t => {
     if (!search.trim()) return true
@@ -185,6 +208,78 @@ export default function TeacherSection({ teachers, subjects = [] }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paged.map((t, i) => (
+                editingId === t._id ? (
+                  /* ── Inline edit row ── */
+                  <tr key={t._id} className="bg-emerald-50">
+                    <td className="px-6 py-3 text-slate-400">{(safePage - 1) * PAGE_SIZE + i + 1}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        value={editData.name}
+                        onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
+                        maxLength={100}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        value={editData.mobile}
+                        onChange={e => setEditData(d => ({ ...d, mobile: e.target.value }))}
+                        maxLength={10}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      {subjects.length > 0 ? (
+                        <select
+                          value={editData.subject}
+                          onChange={e => setEditData(d => ({ ...d, subject: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        >
+                          <option value="">— None —</option>
+                          {subjects.map(s => (
+                            <option key={s._id} value={s.name}>{s.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={editData.subject}
+                          onChange={e => setEditData(d => ({ ...d, subject: e.target.value }))}
+                          placeholder="Subject"
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell">
+                      <input
+                        value={editData.email}
+                        onChange={e => setEditData(d => ({ ...d, email: e.target.value }))}
+                        type="email"
+                        placeholder="Email (optional)"
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      {editError && <p className="text-xs text-red-600">{editError}</p>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={saveEdit}
+                          disabled={editSaving}
+                          className="px-3 py-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg transition-colors"
+                        >
+                          {editSaving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="px-3 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
                 <tr key={t._id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-3 text-slate-400">{(safePage - 1) * PAGE_SIZE + i + 1}</td>
                   <td className="px-6 py-3 font-medium text-slate-800">{t.name}</td>
@@ -208,6 +303,12 @@ export default function TeacherSection({ teachers, subjects = [] }) {
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Edit */}
+                      <button onClick={() => startEdit(t)}
+                        className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                        Edit
+                      </button>
+
                       {/* Deactivate / Reactivate */}
                       <form action={toggleTeacherStatus}>
                         <input type="hidden" name="teacherId" value={t._id} />
@@ -245,6 +346,7 @@ export default function TeacherSection({ teachers, subjects = [] }) {
                     </div>
                   </td>
                 </tr>
+                )
               ))}
             </tbody>
           </table>
