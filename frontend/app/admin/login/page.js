@@ -4,6 +4,7 @@ import { useActionState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { loginAdmin } from '@/lib/actions/auth'
+import ThemeToggle from '@/components/ThemeToggle'
 
 function AdminLoginForm() {
   const [state, action, pending] = useActionState(loginAdmin, null)
@@ -84,6 +85,7 @@ function AdminLoginForm() {
 export default function AdminLogin() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+      <div className="fixed top-3 right-4 z-50"><ThemeToggle /></div>
       <div className="w-full max-w-md">
         <Suspense>
           <AdminLoginForm />

@@ -3,12 +3,14 @@
 import { useActionState } from 'react'
 import Link from 'next/link'
 import { loginSuperAdmin } from '@/lib/actions/auth'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function SuperAdminLogin() {
   const [state, action, pending] = useActionState(loginSuperAdmin, null)
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="fixed top-3 right-4 z-50"><ThemeToggle /></div>
       <div className="w-full max-w-md">
 
         {/* Card */}

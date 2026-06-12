@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4">
+      <div className="fixed top-3 right-4 z-50"><ThemeToggle /></div>
       <div className="w-full max-w-3xl">
 
         {/* Header */}

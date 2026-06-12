@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { logout } from '@/lib/actions/auth'
+import ThemeToggle from '@/components/ThemeToggle'
 import DashboardHome   from './DashboardHome'
 import TeacherSection  from './TeacherSection'
 import ClassSection    from './ClassSection'
@@ -212,9 +213,10 @@ export default function AdminLayout({ school, user, teachers, classes, classesWi
 
           {/* Right side */}
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:block text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+            <span className="hidden sm:block text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full truncate max-w-[140px]">
               {school.name || 'School ERP'}
             </span>
+            <ThemeToggle />
           </div>
         </header>
 
