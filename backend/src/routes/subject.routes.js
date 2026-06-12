@@ -1,8 +1,8 @@
 const router = require('express').Router();
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+const { protect, adminOnly, schoolScope } = require('../middleware/auth.middleware');
 const { getSubjects, createSubject, updateSubject, deleteSubject } = require('../controllers/subject.controller');
 
-router.use(protect, adminOnly);
+router.use(protect, adminOnly, schoolScope);
 
 router.get('/',       getSubjects);
 router.post('/',      createSubject);

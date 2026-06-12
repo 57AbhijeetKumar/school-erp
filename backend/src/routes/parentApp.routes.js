@@ -1,7 +1,8 @@
 const router = require('express').Router();
-const { parentProtect } = require('../middleware/auth.middleware');
-const validateObjectId  = require('../middleware/validateObjectId');
-const { parentLogin }   = require('../controllers/parentAuth.controller');
+const { parentProtect }        = require('../middleware/auth.middleware');
+const { authLimiter }          = require('../middleware/rateLimiter');
+const validateObjectId         = require('../middleware/validateObjectId');
+const { parentLogin }          = require('../controllers/parentAuth.controller');
 const {
   getChildren,
   getChildAttendance,
@@ -16,7 +17,7 @@ const { getTimetableForStudent }                     = require('../controllers/t
 router.param('studentId', validateObjectId);
 router.param('id',        validateObjectId);
 
-router.post('/login', parentLogin);
+router.post('/login', authLimiter, parentLogin);
 
 router.get('/children',                              parentProtect, getChildren);
 router.get('/children/:studentId/attendance',        parentProtect, getChildAttendance);

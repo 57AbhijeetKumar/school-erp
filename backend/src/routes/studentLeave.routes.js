@@ -1,13 +1,13 @@
 const express = require('express');
 const router  = express.Router();
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+const { protect, adminOnly, schoolScope } = require('../middleware/auth.middleware');
 const {
   getLeaveRequestsForAdmin, resolveLeaveByAdmin, deleteStudentLeave,
 } = require('../controllers/studentLeave.controller');
 
 // Admin routes
-router.get('/',              protect, adminOnly, getLeaveRequestsForAdmin);
-router.patch('/:id/resolve', protect, adminOnly, resolveLeaveByAdmin);
-router.delete('/:id',        protect, adminOnly, deleteStudentLeave);
+router.get('/',              protect, adminOnly, schoolScope, getLeaveRequestsForAdmin);
+router.patch('/:id/resolve', protect, adminOnly, schoolScope, resolveLeaveByAdmin);
+router.delete('/:id',        protect, adminOnly, schoolScope, deleteStudentLeave);
 
 module.exports = router;

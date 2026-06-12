@@ -2,8 +2,6 @@ const express    = require('express');
 const cors       = require('cors');
 const helmet     = require('helmet');
 const morgan     = require('morgan');
-const rateLimit  = require('express-rate-limit');
-
 const isProd = process.env.NODE_ENV === 'production';
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -25,26 +23,8 @@ const corsOptions = isProd
     }
   : { origin: true, credentials: true };   // open in dev
 
-// ── Rate limiter ──────────────────────────────────────────────────────────────
-// General API: 500 req / 15 min per IP.
-// The admin dashboard fires 5-6 parallel requests per page load, and Vercel's
-// server-side fetches all originate from a single IP, so 100 was too tight.
-const apiLimiter = rateLimit({
-  windowMs:        15 * 60 * 1000,
-  max:             isProd ? 500 : 10_000,
-  standardHeaders: true,
-  legacyHeaders:   false,
-  message:         { message: 'Too many requests, please try again later.' },
-  skip:            () => !isProd,
-});
-
-// Auth endpoints get a stricter limiter (prevent brute-force)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max:      isProd ? 20 : 10_000,
-  message:  { message: 'Too many login attempts, please try again later.' },
-  skip:     () => !isProd,
-});
+// ── Rate limiters (shared with route files via middleware/rateLimiter.js) ─────
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 
 // ── App ───────────────────────────────────────────────────────────────────────
 const app = express();
@@ -112,8 +92,7 @@ app.get('/', (_req, res) => {
 
 // Auth routes get the stricter rate limiter
 app.use('/api/auth',          authLimiter, authRoutes);
-app.post('/api/parent/login', authLimiter);   // strict limit for login only
-app.use('/api/parent',        parentAppRoutes);
+app.use('/api/parent',        parentAppRoutes);   // authLimiter applied inside parentApp.routes.js
 
 app.use('/api/schools',  schoolRoutes);
 app.use('/api/users',    userRoutes);

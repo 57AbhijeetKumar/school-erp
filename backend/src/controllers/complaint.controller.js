@@ -1,7 +1,8 @@
-const Complaint = require('../models/Complaint');
-const Student   = require('../models/Student');
-const Class     = require('../models/Class');
-const Teacher   = require('../models/Teacher');
+const Complaint      = require('../models/Complaint');
+const Student        = require('../models/Student');
+const Class          = require('../models/Class');
+const Teacher        = require('../models/Teacher');
+const { stripHtml }  = require('../utils/sanitize');
 
 const WITHIN_24H = (c) => Date.now() - new Date(c.createdAt).getTime() < 24 * 60 * 60 * 1000;
 
@@ -67,8 +68,8 @@ const submitComplaintByTeacher = async (req, res) => {
       class:           student.enrolledClass,
       category,
       severity,
-      title:       title.trim(),
-      description: description.trim(),
+      title:       stripHtml(title.trim()),
+      description: stripHtml(description.trim()),
     });
 
     res.status(201).json({ message: 'Complaint raised', complaint });
@@ -244,8 +245,8 @@ const submitComplaintByParent = async (req, res) => {
       class:                student.enrolledClass,
       category,
       severity,
-      title:       title.trim(),
-      description: description.trim(),
+      title:       stripHtml(title.trim()),
+      description: stripHtml(description.trim()),
     });
 
     res.status(201).json({ message: 'Complaint raised', complaint });
