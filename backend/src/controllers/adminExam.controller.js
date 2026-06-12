@@ -26,7 +26,7 @@ const createExam = async (req, res) => {
     const { name, type, classId, subjects, examDate, academicYear } = req.body;
     const schoolId = req.user.school;
 
-    const EXAM_TYPES = ['unit_test', 'annual'];
+    const EXAM_TYPES = ['unit_test', 'quarterly', 'half_yearly', 'pre_board', 'annual'];
     if (!name || !type || !classId || !subjects?.length) {
       return res.status(400).json({ message: 'name, type, classId and subjects are required' });
     }
@@ -262,11 +262,20 @@ const adminEnterMarks = async (req, res) => {
       if (!validSet.has(entry.studentId?.toString())) continue;
       if (!Array.isArray(entry.marks)) continue;
 
-      const marks = exam.subjects.map(sub => {
+      const marks = [];
+      for (const sub of exam.subjects) {
         const m = entry.marks.find(x => x.subject === sub.name);
-        const obtained = Math.min(Number(m?.obtained ?? 0), sub.maxMarks);
-        return { subject: sub.name, obtained: isNaN(obtained) ? 0 : obtained, maxMarks: sub.maxMarks };
-      });
+        const raw = Number(m?.obtained ?? 0);
+        if (isNaN(raw) || raw < 0) {
+          return res.status(400).json({ message: `${sub.name}: marks must be a non-negative number` });
+        }
+        if (raw > sub.maxMarks) {
+          return res.status(400).json({
+            message: `${sub.name}: marks entered (${raw}) cannot exceed maximum (${sub.maxMarks})`,
+          });
+        }
+        marks.push({ subject: sub.name, obtained: raw, maxMarks: sub.maxMarks });
+      }
 
       const totalObtained = marks.reduce((s, m) => s + m.obtained, 0);
       const percentage    = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100 * 10) / 10 : 0;

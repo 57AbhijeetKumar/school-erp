@@ -56,13 +56,15 @@ const getClassFees = async (req, res) => {
       };
     });
 
-    const paid = list.filter(r => r.status === 'paid').length;
+    const paid    = list.filter(r => r.status === 'paid').length;
+    const partial = list.filter(r => r.status === 'partial').length;
+    const due     = list.filter(r => r.status === 'due').length;
     res.json({
       classId,
-      className:   cls.section ? `${cls.name} - ${cls.section}` : cls.name,
+      className: cls.section ? `${cls.name} - ${cls.section}` : cls.name,
       month,
-      summary:     { total: list.length, paid, due: list.length - paid },
-      students:    list,
+      summary:   { total: list.length, paid, partial, due },
+      students:  list,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -82,15 +84,22 @@ const markFee = async (req, res) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
       return res.status(400).json({ message: 'month must be in YYYY-MM format (e.g. 2026-06)' });
     }
-    if (!['paid', 'due'].includes(status)) {
-      return res.status(400).json({ message: 'status must be "paid" or "due"' });
+    if (!['paid', 'partial', 'due'].includes(status)) {
+      return res.status(400).json({ message: 'status must be "paid", "partial", or "due"' });
     }
     if (amount !== undefined && Number(amount) < 0) {
       return res.status(400).json({ message: 'amount cannot be negative' });
     }
+    if (status === 'partial' && (!amount || Number(amount) <= 0)) {
+      return res.status(400).json({ message: 'amount is required and must be > 0 for partial payment' });
+    }
 
     const student = await Student.findOne({ _id: studentId, school: schoolId, isDeleted: { $ne: true } });
     if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    // Warn if already paid (full payment) — allow update but surface the flag
+    const existing = await Fee.findOne({ student: studentId, month });
+    const wasAlreadyPaid = existing?.status === 'paid';
 
     const update = {
       student:  studentId,
@@ -101,7 +110,7 @@ const markFee = async (req, res) => {
       amount:   amount   ?? 0,
       note:     note?.trim() || undefined,
       markedBy: req.user.id,
-      paidAt:   status === 'paid' ? new Date() : null,
+      paidAt:   status === 'paid' ? (existing?.paidAt || new Date()) : (status === 'partial' ? new Date() : null),
     };
 
     const fee = await Fee.findOneAndUpdate(
@@ -110,7 +119,11 @@ const markFee = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({ message: `Fee marked as ${status}`, fee });
+    res.json({
+      message: `Fee marked as ${status}`,
+      wasAlreadyPaid,
+      fee,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -129,11 +142,14 @@ const markBulkFee = async (req, res) => {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
       return res.status(400).json({ message: 'month must be in YYYY-MM format (e.g. 2026-06)' });
     }
-    if (!['paid', 'due'].includes(status)) {
-      return res.status(400).json({ message: 'status must be "paid" or "due"' });
+    if (!['paid', 'partial', 'due'].includes(status)) {
+      return res.status(400).json({ message: 'status must be "paid", "partial", or "due"' });
     }
     if (amount !== undefined && Number(amount) < 0) {
       return res.status(400).json({ message: 'amount cannot be negative' });
+    }
+    if (status === 'partial' && (!amount || Number(amount) <= 0)) {
+      return res.status(400).json({ message: 'amount is required and must be > 0 for partial payment' });
     }
 
     const cls = await Class.findOne({ _id: classId, school: schoolId });

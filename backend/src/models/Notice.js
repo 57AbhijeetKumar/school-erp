@@ -8,6 +8,7 @@ const noticeSchema = new mongoose.Schema(
     targetAudience: { type: String, enum: ['all', 'teachers', 'parents'], default: 'all' },
     createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     isActive:       { type: Boolean, default: true },
+    expiryDate:     { type: Date, default: null },
   },
   { timestamps: true }
 );

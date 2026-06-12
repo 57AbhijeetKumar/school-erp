@@ -22,10 +22,12 @@ export async function fetchNotices() {
 
 export async function createNotice(_prevState, formData) {
   const token = await getToken()
+  const expiryDate = formData.get('expiryDate')
   const body = {
     title:          formData.get('title'),
     content:        formData.get('content'),
     targetAudience: formData.get('targetAudience') || 'all',
+    expiryDate:     expiryDate || null,
   }
   try {
     const res = await fetch(`${API}/api/notices`, {

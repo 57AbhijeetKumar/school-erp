@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
  */
 const examSchema = new mongoose.Schema({
   name:       { type: String, required: true, trim: true, maxlength: 200 },
-  type:       { type: String, enum: ['unit_test', 'annual'], required: true },
+  type:       { type: String, enum: ['unit_test', 'quarterly', 'half_yearly', 'pre_board', 'annual'], required: true },
   class:      { type: mongoose.Schema.Types.ObjectId, ref: 'Class',  required: true },
   school:     { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: true },
   subjects:   [{

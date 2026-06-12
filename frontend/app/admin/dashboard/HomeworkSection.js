@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { fetchClassHomework, fetchHomeworkSubmissions, adminDeleteHomework, adminCreateHomework } from '@/lib/actions/homework'
+import { fetchClassHomework, fetchHomeworkSubmissions, adminDeleteHomework, adminCreateHomework, adminUpdateHomework } from '@/lib/actions/homework'
 
 const STATUS = {
   submitted:     { label: 'Submitted',     cls: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
@@ -17,12 +17,16 @@ function MetaValue({ children, className = '' }) {
   return <span className={`text-xs font-medium text-slate-700 ${className}`}>{children}</span>
 }
 
-function HomeworkRow({ hw, onDelete }) {
+function HomeworkRow({ hw, onDelete, onUpdate }) {
   const [open,       setOpen]       = useState(false)
   const [data,       setData]       = useState(null)
   const [loading,    setLoading]    = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
+  const [editing,    setEditing]    = useState(false)
+  const [editData,   setEditData]   = useState({ title: hw.title, description: hw.description, subject: hw.subject || '', dueDate: hw.dueDate || '' })
+  const [editErr,    setEditErr]    = useState('')
+  const [saving,     setSaving]     = useState(false)
 
   async function toggle() {
     if (open) { setOpen(false); return }
@@ -40,8 +44,74 @@ function HomeworkRow({ hw, onDelete }) {
     onDelete(hw.id)
   }
 
+  async function handleSaveEdit() {
+    if (!editData.title.trim() || !editData.description.trim()) {
+      setEditErr('Title and description are required')
+      return
+    }
+    setSaving(true)
+    setEditErr('')
+    const result = await adminUpdateHomework(hw.id, editData)
+    setSaving(false)
+    if (result?.error) {
+      setEditErr(result.error)
+    } else {
+      setEditing(false)
+      onUpdate(hw.id, result.homework)
+    }
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+
+      {/* Inline edit form */}
+      {editing && (
+        <div className="bg-amber-50 border-b border-amber-100 p-4">
+          <p className="text-sm font-semibold text-slate-700 mb-3">Edit Homework</p>
+          {editErr && <p className="text-red-600 text-xs mb-2">{editErr}</p>}
+          <div className="space-y-2">
+            <input
+              type="text" maxLength={200}
+              value={editData.title}
+              onChange={e => setEditData(d => ({ ...d, title: e.target.value }))}
+              placeholder="Title *"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <textarea
+              rows={3} maxLength={2000}
+              value={editData.description}
+              onChange={e => setEditData(d => ({ ...d, description: e.target.value }))}
+              placeholder="Description *"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="text" maxLength={100}
+                value={editData.subject}
+                onChange={e => setEditData(d => ({ ...d, subject: e.target.value }))}
+                placeholder="Subject (optional)"
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <input
+                type="date"
+                value={editData.dueDate}
+                onChange={e => setEditData(d => ({ ...d, dueDate: e.target.value }))}
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleSaveEdit} disabled={saving}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors">
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button onClick={() => { setEditing(false); setEditErr('') }}
+                className="px-4 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Card body */}
       <div className="flex">
@@ -70,6 +140,10 @@ function HomeworkRow({ hw, onDelete }) {
                 </>
               ) : (
                 <>
+                  <button onClick={() => { setEditing(v => !v); setEditErr(''); setEditData({ title: hw.title, description: hw.description, subject: hw.subject || '', dueDate: hw.dueDate || '' }) }}
+                    className="px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                    Edit
+                  </button>
                   <button onClick={() => setConfirmDel(true)}
                     className="px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     Delete
@@ -378,6 +452,7 @@ export default function HomeworkSection({ classes }) {
                     key={hw.id}
                     hw={hw}
                     onDelete={id => setHomework(prev => prev.filter(h => h.id !== id))}
+                    onUpdate={(id, updated) => setHomework(prev => prev.map(h => h.id === id ? { ...h, ...updated } : h))}
                   />
                 ))}
               </div>

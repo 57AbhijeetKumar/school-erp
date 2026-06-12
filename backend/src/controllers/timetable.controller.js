@@ -70,9 +70,16 @@ const setTimetable = async (req, res) => {
       return res.status(400).json({ message: 'classId and schedule are required' });
     }
 
-    // Time format validation (only when times are provided)
+    // Time format and duplicate period number validation
     const timeRe = /^\d{2}:\d{2}$/;
     for (const day of schedule) {
+      const periodNums = (day.periods || []).map(p => p.periodNumber);
+      const dupNum = periodNums.find((n, i) => periodNums.indexOf(n) !== i);
+      if (dupNum !== undefined) {
+        return res.status(400).json({
+          message: `Duplicate period number ${dupNum} on ${day.day}. Each period on a day must have a unique number.`,
+        });
+      }
       for (const period of (day.periods || [])) {
         const hasStart = period.startTime?.trim();
         const hasEnd   = period.endTime?.trim();

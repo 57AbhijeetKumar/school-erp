@@ -1,3 +1,4 @@
+const mongoose   = require('mongoose');
 const Student    = require('../models/Student');
 const Class      = require('../models/Class');
 const Attendance = require('../models/Attendance');
@@ -5,10 +6,12 @@ const Exam       = require('../models/Exam');
 const ExamResult = require('../models/ExamResult');
 const Fee        = require('../models/Fee');
 
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
 // Shared helper: enrolled students + historical fallback
 async function classStudents(classId, schoolId, records, studentField = 'student') {
   const students = await Student
-    .find({ enrolledClass: classId, school: schoolId })
+    .find({ enrolledClass: classId, school: schoolId, isDeleted: { $ne: true } })
     .sort({ rollNumber: 1, name: 1 })
     .select('name rollNumber parentName parentMobile dob admissionSession currentSession');
 
@@ -34,12 +37,13 @@ const studentRoster = async (req, res) => {
     const schoolId = req.user.school;
     const { classId } = req.query;
     if (!classId) return res.status(400).json({ message: 'classId is required' });
+    if (!isValidId(classId)) return res.status(400).json({ message: 'Invalid classId format' });
 
     const cls = await Class.findOne({ _id: classId, school: schoolId });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
     const students = await Student
-      .find({ enrolledClass: classId, school: schoolId })
+      .find({ enrolledClass: classId, school: schoolId, isDeleted: { $ne: true } })
       .sort({ rollNumber: 1, name: 1 });
 
     res.json({
@@ -67,6 +71,7 @@ const attendanceReport = async (req, res) => {
     if (!classId || !from || !to) {
       return res.status(400).json({ message: 'classId, from, and to are required' });
     }
+    if (!isValidId(classId)) return res.status(400).json({ message: 'Invalid classId format' });
 
     const fromDate = new Date(from + 'T00:00:00.000Z');
     const toDate   = new Date(to   + 'T23:59:59.999Z');
@@ -135,6 +140,7 @@ const examsList = async (req, res) => {
     const schoolId = req.user.school;
     const { classId } = req.query;
     if (!classId) return res.status(400).json({ message: 'classId is required' });
+    if (!isValidId(classId)) return res.status(400).json({ message: 'Invalid classId format' });
 
     const exams = await Exam
       .find({ class: classId, school: schoolId })
@@ -160,6 +166,7 @@ const examResultsReport = async (req, res) => {
     const schoolId = req.user.school;
     const { examId } = req.query;
     if (!examId) return res.status(400).json({ message: 'examId is required' });
+    if (!isValidId(examId)) return res.status(400).json({ message: 'Invalid examId format' });
 
     const exam = await Exam.findOne({ _id: examId, school: schoolId })
       .populate('class', 'name section');
@@ -169,10 +176,10 @@ const examResultsReport = async (req, res) => {
       .populate('student', 'name rollNumber')
       .sort({ createdAt: 1 });
 
-    // Students with no result (currently enrolled)
+    // Students with no result (currently enrolled, excluding deleted)
     const withResultIds = new Set(results.map(r => r.student._id.toString()));
     const enrolled = await Student
-      .find({ enrolledClass: exam.class._id, school: schoolId })
+      .find({ enrolledClass: exam.class._id, school: schoolId, isDeleted: { $ne: true } })
       .select('name rollNumber')
       .sort({ rollNumber: 1 });
     const noResult = enrolled.filter(s => !withResultIds.has(s._id.toString()));
@@ -211,6 +218,7 @@ const feeReport = async (req, res) => {
     if (!classId || !from || !to) {
       return res.status(400).json({ message: 'classId, from, and to are required' });
     }
+    if (!isValidId(classId)) return res.status(400).json({ message: 'Invalid classId format' });
     if (!/^\d{4}-\d{2}$/.test(from) || !/^\d{4}-\d{2}$/.test(to)) {
       return res.status(400).json({ message: 'from and to must be YYYY-MM' });
     }
@@ -277,6 +285,7 @@ const reportCard = async (req, res) => {
     if (!studentId || !academicYear) {
       return res.status(400).json({ message: 'studentId and academicYear are required' });
     }
+    if (!isValidId(studentId)) return res.status(400).json({ message: 'Invalid studentId format' });
 
     const student = await Student
       .findOne({ _id: studentId, school: schoolId })

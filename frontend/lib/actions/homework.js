@@ -46,6 +46,21 @@ export async function adminCreateHomework({ classId, title, description, subject
   } catch { return { error: 'Cannot connect to server' } }
 }
 
+export async function adminUpdateHomework(homeworkId, { title, description, subject, dueDate }) {
+  const token = await getToken()
+  if (!token) return { error: 'Not authenticated' }
+  try {
+    const res = await fetch(`${API}/api/homework/${homeworkId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ title, description, subject: subject || undefined, dueDate: dueDate || null }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { error: data.message || 'Failed to update homework' }
+    return { success: true, homework: data }
+  } catch { return { error: 'Cannot connect to server' } }
+}
+
 export async function adminDeleteHomework(homeworkId) {
   const token = await getToken()
   if (!token) return { error: 'Not authenticated' }

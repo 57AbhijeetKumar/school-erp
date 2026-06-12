@@ -26,7 +26,7 @@ export default function NoticeSection() {
   const [content,    setContent]    = useState('')
   const [deleting,   setDeleting]   = useState(null)
   const [editingId,  setEditingId]  = useState(null)
-  const [editData,   setEditData]   = useState({ title: '', content: '', targetAudience: 'all' })
+  const [editData,   setEditData]   = useState({ title: '', content: '', targetAudience: 'all', expiryDate: '' })
   const [editErr,    setEditErr]    = useState('')
   const [isPending,  startTransition] = useTransition()
 
@@ -34,7 +34,7 @@ export default function NoticeSection() {
 
   function startEdit(n) {
     setEditingId(n._id)
-    setEditData({ title: n.title, content: n.content, targetAudience: n.targetAudience })
+    setEditData({ title: n.title, content: n.content, targetAudience: n.targetAudience, expiryDate: n.expiryDate || '' })
     setEditErr('')
   }
 
@@ -109,14 +109,23 @@ export default function NoticeSection() {
               />
               <p className="text-xs text-slate-400 text-right mt-0.5">{content.length} / 5000</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Audience</label>
-              <select
-                name="targetAudience"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Audience</label>
+                <select
+                  name="targetAudience"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Expiry Date <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input
+                  type="date" name="expiryDate"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
             {state?.error && <p className="text-red-600 text-sm">{state.error}</p>}
             <div className="flex gap-3">
@@ -167,13 +176,24 @@ export default function NoticeSection() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="Content"
                   />
-                  <select
-                    value={editData.targetAudience}
-                    onChange={e => setEditData(d => ({ ...d, targetAudience: e.target.value }))}
-                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                  </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select
+                      value={editData.targetAudience}
+                      onChange={e => setEditData(d => ({ ...d, targetAudience: e.target.value }))}
+                      className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                    </select>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-0.5 block">Expiry Date (optional)</label>
+                      <input
+                        type="date"
+                        value={editData.expiryDate}
+                        onChange={e => setEditData(d => ({ ...d, expiryDate: e.target.value }))}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
                   {editErr && <p className="text-xs text-red-600">{editErr}</p>}
                   <div className="flex gap-2">
                     <button
@@ -204,6 +224,9 @@ export default function NoticeSection() {
                       {new Date(n.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {n.createdByName && (
                         <span className="ml-2">· by <span className="font-medium">{n.createdByName}</span></span>
+                      )}
+                      {n.expiryDate && (
+                        <span className="ml-2 text-amber-500">· Expires: <span className="font-medium">{n.expiryDate}</span></span>
                       )}
                     </p>
                   </div>

@@ -8,7 +8,7 @@ const feeSchema = new mongoose.Schema(
     month:        { type: String, required: true },   // "YYYY-MM"
     academicYear: { type: String, trim: true },       // "2024-25"
     amount:       { type: Number, default: 0 },
-    status:   { type: String, enum: ['paid', 'due'], default: 'due' },
+    status:   { type: String, enum: ['paid', 'partial', 'due'], default: 'due' },
     paidAt:   { type: Date },
     markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     note:     { type: String, trim: true, maxlength: 200 },
