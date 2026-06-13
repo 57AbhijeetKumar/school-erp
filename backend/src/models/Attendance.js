@@ -11,7 +11,8 @@ const attendanceSchema = new mongoose.Schema({
   class:    { type: mongoose.Schema.Types.ObjectId, ref: 'Class',   required: true },
   school:   { type: mongoose.Schema.Types.ObjectId, ref: 'School',  required: true },
   status:   { type: String, enum: ['present', 'absent', 'late'], default: 'absent' },
-  markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  markedBy:      { type: mongoose.Schema.Types.ObjectId, refPath: 'markedByModel', required: true },
+  markedByModel: { type: String, enum: ['Teacher', 'User'], required: true, default: 'Teacher' },
 }, { timestamps: true });
 
 // One record per student per day

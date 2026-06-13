@@ -17,7 +17,8 @@ const createClass = async (req, res) => {
     if (!cleanName) return res.status(400).json({ message: 'Class name is required' });
     if (cleanName.length > 100) return res.status(400).json({ message: 'Class name cannot exceed 100 characters' });
 
-    const duplicate = await Class.findOne({ name: cleanName, school: req.user.school });
+    const cleanSection = stripHtml(section?.trim()) || null;
+    const duplicate = await Class.findOne({ name: cleanName, section: cleanSection, school: req.user.school });
     if (duplicate) return res.status(409).json({ message: `Class "${cleanName}" already exists` });
 
     if (classTeacherId) {
@@ -32,7 +33,7 @@ const createClass = async (req, res) => {
 
     const cls = await Class.create({
       name:         cleanName,
-      section:      stripHtml(section?.trim()) || undefined,
+      section:      cleanSection || undefined,
       classTeacher: classTeacherId  || undefined,
       school:       req.user.school,
     });
@@ -170,12 +171,13 @@ const updateClass = async (req, res) => {
     if (!cleanName) return res.status(400).json({ message: 'Class name is required' });
     if (cleanName.length > 100) return res.status(400).json({ message: 'Class name cannot exceed 100 characters' });
 
-    const duplicate = await Class.findOne({ name: cleanName, school: req.user.school, _id: { $ne: req.params.id } });
+    const cleanSection = stripHtml(section?.trim()) || null;
+    const duplicate = await Class.findOne({ name: cleanName, section: cleanSection, school: req.user.school, _id: { $ne: req.params.id } });
     if (duplicate) return res.status(409).json({ message: `Class "${cleanName}" already exists` });
 
     const cls = await Class.findOneAndUpdate(
       { _id: req.params.id, school: req.user.school },
-      { name: cleanName, section: stripHtml(section?.trim()) || undefined },
+      { name: cleanName, section: cleanSection || undefined },
       { new: true }
     ).populate('classTeacher', 'name mobile subject');
 

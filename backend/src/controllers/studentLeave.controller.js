@@ -152,6 +152,11 @@ const getLeaveRequestsForAdmin = async (req, res) => {
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const skip  = (page - 1) * limit;
 
+    const VALID_STATUSES = ['pending', 'approved', 'rejected'];
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'status must be pending, approved, or rejected' });
+    }
+
     const filter = { school: req.user.school };
     if (status)  filter.status = status;
     if (classId) filter.class  = classId;

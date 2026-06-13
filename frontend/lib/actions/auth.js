@@ -23,8 +23,9 @@ export async function loginSuperAdmin(prevState, formData) {
     if (data.user.role !== 'superadmin') return { error: 'Access denied. Not a super admin account.' }
 
     const jar = await cookies()
-    jar.set('erp_token', data.token, { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
-    jar.set('erp_role',  'superadmin', { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
+    const cookieOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/' }
+    jar.set('erp_token', data.token,   cookieOpts)
+    jar.set('erp_role',  'superadmin', cookieOpts)
     redirectTo = '/superadmin/dashboard'
   } catch {
     return { error: 'Cannot reach server. Is the backend running on port 8000?' }
@@ -53,10 +54,11 @@ export async function loginAdmin(prevState, formData) {
     if (data.user.role !== 'admin') return { error: 'Access denied. Not a school admin account.' }
 
     const jar = await cookies()
-    jar.set('erp_token',   data.token, { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
-    jar.set('erp_role',    'admin',    { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
-    jar.set('erp_school',  JSON.stringify(data.user.school || {}), { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
-    jar.set('erp_user',    JSON.stringify({ name: data.user.name, email: data.user.email }), { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' })
+    const cookieOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/' }
+    jar.set('erp_token',  data.token, cookieOpts)
+    jar.set('erp_role',   'admin',    cookieOpts)
+    jar.set('erp_school', JSON.stringify(data.user.school || {}), cookieOpts)
+    jar.set('erp_user',   JSON.stringify({ name: data.user.name, email: data.user.email }), cookieOpts)
     redirectTo = '/admin/dashboard'
   } catch {
     return { error: 'Cannot reach server. Is the backend running on port 8000?' }

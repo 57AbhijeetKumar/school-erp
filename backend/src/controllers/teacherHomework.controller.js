@@ -3,6 +3,7 @@ const HomeworkSubmission = require('../models/HomeworkSubmission');
 const Class              = require('../models/Class');
 const Student            = require('../models/Student');
 const { cloudinary, uploadBuffer } = require('../config/cloudinary');
+const { stripHtml }      = require('../utils/sanitize');
 
 // GET /api/app/homework
 const getHomework = async (req, res) => {
@@ -70,8 +71,8 @@ const addHomework = async (req, res) => {
     }
 
     const hw = await Homework.create({
-      title:       title.trim(),
-      description: description.trim(),
+      title:       stripHtml(title.trim()),
+      description: stripHtml(description.trim()),
       subject:     subject?.trim() || undefined,
       dueDate:     dueDate         || undefined,
       class:       classId,
@@ -161,12 +162,12 @@ const updateHomework = async (req, res) => {
 
     const { title, description, subject, dueDate } = req.body;
     if (title !== undefined) {
-      const t = title?.trim();
+      const t = stripHtml(title?.trim());
       if (!t) return res.status(400).json({ message: 'Title cannot be empty' });
       hw.title = t;
     }
     if (description !== undefined) {
-      const d = description?.trim();
+      const d = stripHtml(description?.trim());
       if (!d) return res.status(400).json({ message: 'Description cannot be empty' });
       hw.description = d;
     }

@@ -24,6 +24,9 @@ const addStudent = async (req, res) => {
     if (roll && !/^\d+$/.test(roll)) {
       return res.status(400).json({ message: 'Roll number must be a positive integer' });
     }
+    if (parentMobile?.trim() && !/^\d{10}$/.test(parentMobile.trim())) {
+      return res.status(400).json({ message: 'Parent mobile must be 10 digits' });
+    }
     if (dob && new Date(dob) > new Date()) {
       return res.status(400).json({ message: 'Date of birth cannot be in the future' });
     }

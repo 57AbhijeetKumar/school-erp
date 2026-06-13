@@ -79,6 +79,10 @@ const markAttendance = async (req, res) => {
     if (date > today) {
       return res.status(400).json({ message: 'Cannot mark attendance for a future date' });
     }
+    const dayOfWeek = new Date(date + 'T00:00:00.000Z').getDay();
+    if (dayOfWeek === 0) {
+      return res.status(400).json({ message: 'Cannot mark attendance on Sunday' });
+    }
 
     const VALID_STATUSES = ['present', 'absent', 'late'];
     const invalid = records.find(r => !VALID_STATUSES.includes(r.status));
@@ -89,6 +93,16 @@ const markAttendance = async (req, res) => {
     const cls = await Class.findOne({ classTeacher: teacherId, school: schoolId });
     if (!cls) return res.status(403).json({ message: 'You are not a class teacher' });
 
+    const submittedIds = records.map(r => r.studentId);
+    const validStudentIds = await Student.find(
+      { _id: { $in: submittedIds }, enrolledClass: cls._id, school: schoolId },
+    ).distinct('_id');
+    const validSet = new Set(validStudentIds.map(id => id.toString()));
+    const invalidStudent = submittedIds.find(id => !validSet.has(id?.toString()));
+    if (invalidStudent) {
+      return res.status(400).json({ message: 'One or more students do not belong to your class' });
+    }
+
     const attendanceDate = new Date(date + 'T00:00:00.000Z');
 
     const ops = records.map(({ studentId, status }) => ({
@@ -96,12 +110,13 @@ const markAttendance = async (req, res) => {
         filter: { date: attendanceDate, student: studentId },
         update: {
           $set: {
-            date:     attendanceDate,
-            student:  studentId,
-            class:    cls._id,
-            school:   schoolId,
-            status:   status || 'absent',
-            markedBy: teacherId,
+            date:          attendanceDate,
+            student:       studentId,
+            class:         cls._id,
+            school:        schoolId,
+            status:        status || 'absent',
+            markedBy:      teacherId,
+            markedByModel: 'Teacher',
           },
         },
         upsert: true,

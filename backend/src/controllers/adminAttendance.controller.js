@@ -149,12 +149,13 @@ const markClassAttendance = async (req, res) => {
         filter: { date: attendanceDate, student: studentId },
         update: {
           $set: {
-            date:     attendanceDate,
-            student:  studentId,
-            class:    cls._id,
-            school:   schoolId,
+            date:          attendanceDate,
+            student:       studentId,
+            class:         cls._id,
+            school:        schoolId,
             status,
-            markedBy: req.user.id,
+            markedBy:      req.user.id,
+            markedByModel: 'User',
           },
         },
         upsert: true,
